@@ -17,5 +17,7 @@ data class TileEntity(
     @ColumnInfo(name = "label")
     val label: String,
     @ColumnInfo(name = "subtitle")
-    val subtitle: String?
+    val subtitle: String?,
+    @ColumnInfo(name = "enabled")
+    val enabled: Boolean
 )

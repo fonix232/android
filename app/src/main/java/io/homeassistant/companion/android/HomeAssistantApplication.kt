@@ -3,8 +3,11 @@ package io.homeassistant.companion.android
 import android.app.Application
 import android.app.NotificationManager
 import android.bluetooth.BluetoothAdapter
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.net.wifi.WifiManager
 import android.os.Build
@@ -14,6 +17,7 @@ import io.homeassistant.companion.android.common.dagger.AppComponent
 import io.homeassistant.companion.android.common.dagger.Graph
 import io.homeassistant.companion.android.common.dagger.GraphComponentAccessor
 import io.homeassistant.companion.android.database.AppDatabase
+import io.homeassistant.companion.android.qs.*
 import io.homeassistant.companion.android.sensors.LastUpdateManager
 import io.homeassistant.companion.android.sensors.SensorReceiver
 import io.homeassistant.companion.android.widgets.button.ButtonWidget
@@ -159,7 +163,38 @@ open class HomeAssistantApplication : Application(), GraphComponentAccessor {
             templateWidget,
             IntentFilter(Intent.ACTION_SCREEN_ON)
         )
+
+        initializeQuickSettingTiles()
     }
+
+    private fun initializeQuickSettingTiles() {
+        val tileDao = AppDatabase.getInstance(applicationContext).tileDao()
+        tileDao.getAll()?.forEach { tile ->
+            packageManager.setComponentEnabledSetting(
+                ComponentName(this, getTileServiceNameForId(tile.id)),
+                tile.enabled.componentState, PackageManager.DONT_KILL_APP
+            )
+        }
+    }
+
+    private val Boolean.componentState
+        get() = if (this) PackageManager.COMPONENT_ENABLED_STATE_ENABLED else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+
+    private fun getTileServiceNameForId(id: Int): String {
+        val service = when (id) {
+            1 -> Tile1Service
+            2 -> Tile2Service
+            3 -> Tile3Service
+            4 -> Tile4Service
+            5 -> Tile5Service
+            6 -> Tile6Service
+            7 -> Tile7Service
+            8 -> Tile8Service
+            else -> throw Exception()
+        }
+        return service::javaClass.name
+    }
+
 
     override val appComponent: AppComponent
         get() = graph.appComponent

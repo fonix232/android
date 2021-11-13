@@ -57,7 +57,7 @@ import kotlinx.coroutines.runBlocking
         NotificationItem::class,
         TileEntity::class
     ],
-    version = 19,
+    version = 20,
     exportSchema = false
 )
 @TypeConverters(EntriesTypeConverter::class)
@@ -113,7 +113,8 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_15_16,
                     MIGRATION_16_17,
                     MIGRATION_17_18,
-                    MIGRATION_18_19
+                    MIGRATION_18_19,
+                    MIGRATION_19_20
                 )
                 .fallbackToDestructiveMigration()
                 .build()
@@ -439,6 +440,12 @@ abstract class AppDatabase : RoomDatabase() {
                 database.execSQL("ALTER TABLE `sensors` ADD `entity_category` TEXT")
                 database.execSQL("ALTER TABLE `sensors` ADD `core_registration` TEXT")
                 database.execSQL("ALTER TABLE `sensors` ADD `app_registration` TEXT")
+            }
+        }
+
+        private val MIGRATION_19_20 = object : Migration(19,20) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE `qs_tiles` ADD `enabled` INTEGER NOT NULL DEFAULT '0'")
             }
         }
 
