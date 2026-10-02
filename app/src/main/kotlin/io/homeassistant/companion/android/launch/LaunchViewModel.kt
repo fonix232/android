@@ -12,6 +12,7 @@ import io.homeassistant.companion.android.BuildConfig
 import io.homeassistant.companion.android.applock.AppLockStateManager
 import io.homeassistant.companion.android.automotive.navigation.AutomotiveRoute
 import io.homeassistant.companion.android.common.data.authentication.SessionState
+import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
 import io.homeassistant.companion.android.common.data.network.NetworkState
 import io.homeassistant.companion.android.common.data.network.NetworkStatusMonitor
 import io.homeassistant.companion.android.common.data.prefs.PrefsRepository
@@ -32,8 +33,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
@@ -125,6 +128,13 @@ internal class LaunchViewModel @VisibleForTesting constructor(
     private val fullscreenRequested = MutableStateFlow(false)
 
     /**
+     * The kiosk configuration in effect, shared by everything below that reacts to it so the
+     * stored settings are read once per change rather than once per consumer.
+     */
+    private val kioskState: StateFlow<KioskState> =
+        observeKioskState().stateIn(viewModelScope, SharingStarted.Eagerly, initialValue = KioskState.Inactive)
+
+    /**
      * Emits which system bars the window should currently hide.
      *
      * Fullscreen — the user's preference, or a temporary request from the frontend such as
@@ -135,10 +145,19 @@ internal class LaunchViewModel @VisibleForTesting constructor(
     val systemBars: StateFlow<SystemBars> = combine(
         flow { emitAll(prefsRepository.fullScreenEnabledFlow()) },
         fullscreenRequested,
-        observeKioskState(),
-    ) { preference, requested, kioskState ->
-        if (preference || requested) SystemBars.HIDDEN else kioskState.toSystemBars()
+        kioskState,
+    ) { preference, requested, state ->
+        if (preference || requested) SystemBars.HIDDEN else state.toSystemBars()
     }.stateIn(viewModelScope, SharingStarted.Eagerly, initialValue = SystemBars.VISIBLE)
+
+    /**
+     * Emits the brightness kiosk mode forces on the window, or `null` when the display's
+     * brightness is the system's and the user's to decide.
+     */
+    val forcedBrightness: StateFlow<KioskBrightness?> = kioskState
+        .map { it.forcedBrightness }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, initialValue = null)
 
     private val _isAppLocked = MutableStateFlow(false)
     val isAppLocked: StateFlow<Boolean> = _isAppLocked.asStateFlow()

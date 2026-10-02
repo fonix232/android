@@ -9,6 +9,8 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Parcelable
 import android.view.ViewTreeObserver
+import android.view.Window
+import android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -43,6 +45,7 @@ import io.homeassistant.companion.android.authenticator.Authenticator.Companion.
 import io.homeassistant.companion.android.changelog.navigation.ChangelogAutoShowEffect
 import io.homeassistant.companion.android.common.R as commonR
 import io.homeassistant.companion.android.common.compose.theme.HATheme
+import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
 import io.homeassistant.companion.android.common.sensors.SensorWorker
 import io.homeassistant.companion.android.common.util.CheckLocalNetworkPermissionUseCase
 import io.homeassistant.companion.android.common.util.SdkVersion
@@ -199,11 +202,14 @@ class LaunchActivity : AppCompatActivity() {
                 val navController = rememberNavController()
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                 val systemBars by viewModel.systemBars.collectAsStateWithLifecycle()
+                val forcedBrightness by viewModel.forcedBrightness.collectAsStateWithLifecycle()
                 val isAppLocked by viewModel.isAppLocked.collectAsStateWithLifecycle()
                 val hazeState = rememberHazeState()
                 val snackbarHostState = remember { SnackbarHostState() }
 
                 SystemBarsEffect(systemBars = systemBars)
+
+                ForcedBrightnessEffect(brightness = forcedBrightness)
 
                 MissingPlayServicesNotice(
                     isMissingRequiredPlayServices = playServicesAvailability.isMissingRequiredPlayServices(),
@@ -344,6 +350,37 @@ private fun SystemBarsEffect(systemBars: SystemBars) {
             viewTreeObserver.removeOnWindowFocusChangeListener(focusListener)
         }
     }
+}
+
+/**
+ * Forces the window's screen brightness to [brightness] while kiosk mode asks for one, and hands
+ * the display back to the system when it stops or the activity goes away.
+ *
+ * The override lives on the activity window rather than in the system's brightness setting, so it
+ * needs no permission, applies only while the app is in front, and cannot leave the device stuck at
+ * a kiosk brightness once the app is gone.
+ */
+@Composable
+private fun ForcedBrightnessEffect(brightness: KioskBrightness?) {
+    val window = LocalActivity.current?.window ?: return
+
+    DisposableEffect(window, brightness) {
+        window.setBrightnessOverride(brightness?.value ?: BRIGHTNESS_OVERRIDE_NONE)
+        onDispose {
+            window.setBrightnessOverride(BRIGHTNESS_OVERRIDE_NONE)
+        }
+    }
+}
+
+/**
+ * Applies [value] as this window's screen brightness, where [BRIGHTNESS_OVERRIDE_NONE] returns the
+ * decision to the system.
+ *
+ * The attributes have to be read, changed, and assigned back: assigning is what makes the window
+ * manager pick the change up.
+ */
+private fun Window.setBrightnessOverride(value: Float) {
+    attributes = attributes.apply { screenBrightness = value }
 }
 
 /** Hides or shows the insets of [types]. */

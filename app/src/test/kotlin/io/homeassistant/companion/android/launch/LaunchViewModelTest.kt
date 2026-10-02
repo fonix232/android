@@ -7,6 +7,7 @@ import androidx.work.WorkManager
 import io.homeassistant.companion.android.applock.AppLockStateManager
 import io.homeassistant.companion.android.automotive.navigation.AutomotiveRoute
 import io.homeassistant.companion.android.common.data.authentication.SessionState
+import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.common.data.network.NetworkState
 import io.homeassistant.companion.android.common.data.network.NetworkStatusMonitor
@@ -744,6 +745,54 @@ class LaunchViewModelTest {
         advanceUntilIdle()
 
         assertEquals(SystemBars(statusBarHidden = false, navigationBarHidden = true), viewModel.systemBars.value)
+    }
+
+    @Test
+    fun `Given kiosk mode is disabled when observed then no brightness is forced`() = runTest {
+        kioskSettingsRepository.setSettings(
+            KioskSettings(enabled = false, brightness = KioskBrightness.fromPercent(10)),
+        )
+        createViewModel()
+        advanceUntilIdle()
+
+        assertNull(viewModel.forcedBrightness.value)
+    }
+
+    @Test
+    fun `Given kiosk mode is enabled without a chosen brightness then the system keeps control of it`() = runTest {
+        kioskSettingsRepository.setSettings(KioskSettings(enabled = true))
+        createViewModel()
+        advanceUntilIdle()
+
+        assertNull(viewModel.forcedBrightness.value)
+    }
+
+    @Test
+    fun `Given kiosk mode is enabled when observed then its brightness is forced`() = runTest {
+        kioskSettingsRepository.setSettings(
+            KioskSettings(enabled = true, brightness = KioskBrightness.fromPercent(25)),
+        )
+        createViewModel()
+        advanceUntilIdle()
+
+        assertEquals(KioskBrightness.fromPercent(25), viewModel.forcedBrightness.value)
+    }
+
+    @Test
+    fun `Given kiosk mode is turned off then the forced brightness is released`() = runTest {
+        kioskSettingsRepository.setSettings(
+            KioskSettings(enabled = true, brightness = KioskBrightness.fromPercent(25)),
+        )
+        createViewModel()
+        advanceUntilIdle()
+        assertEquals(KioskBrightness.fromPercent(25), viewModel.forcedBrightness.value)
+
+        kioskSettingsRepository.setSettings(
+            KioskSettings(enabled = false, brightness = KioskBrightness.fromPercent(25)),
+        )
+        advanceUntilIdle()
+
+        assertNull(viewModel.forcedBrightness.value)
     }
 
     @Test
