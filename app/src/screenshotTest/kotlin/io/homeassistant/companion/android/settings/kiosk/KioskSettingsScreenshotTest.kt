@@ -18,11 +18,9 @@ class KioskSettingsScreenshotTest {
                 onRequireAuthenticationChanged = {},
                 onAcceptRemoteCommandsChanged = {},
                 onShowRemoteCommandConfirmationsChanged = {},
-                onAutoReloadChanged = {},
-                onKeepScreenOnChanged = {},
-                onHideStatusBarChanged = {},
-                onHideNavigationBarChanged = {},
-                onBrightnessChanged = {},
+                onServerChanged = {},
+                onDashboardPathChanged = {},
+                onDisplaySettingChanged = {},
                 onScreensaverClick = {},
             )
         }
@@ -44,11 +42,9 @@ class KioskSettingsScreenshotTest {
                 onRequireAuthenticationChanged = {},
                 onAcceptRemoteCommandsChanged = {},
                 onShowRemoteCommandConfirmationsChanged = {},
-                onAutoReloadChanged = {},
-                onKeepScreenOnChanged = {},
-                onHideStatusBarChanged = {},
-                onHideNavigationBarChanged = {},
-                onBrightnessChanged = {},
+                onServerChanged = {},
+                onDashboardPathChanged = {},
+                onDisplaySettingChanged = {},
                 onScreensaverClick = {},
             )
         }

@@ -15,8 +15,9 @@ import io.homeassistant.companion.android.common.R as commonR
 import io.homeassistant.companion.android.common.data.connectivity.ConnectivityCheckRepository
 import io.homeassistant.companion.android.common.data.connectivity.ConnectivityCheckState
 import io.homeassistant.companion.android.common.data.keychain.KeyChainRepository
-import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverController
-import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverRequest
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreenController
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreenRequest
+import io.homeassistant.companion.android.common.data.kiosk.KioskSettingsRepository
 import io.homeassistant.companion.android.common.data.prefs.PrefsRepository
 import io.homeassistant.companion.android.common.data.prefs.ScreenOrientation
 import io.homeassistant.companion.android.common.data.servers.ServerManager
@@ -63,6 +64,7 @@ import io.homeassistant.companion.android.util.hasSameOrigin
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.ExperimentalForInheritanceCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
@@ -92,6 +94,9 @@ import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import timber.log.Timber
 
+/** The frontend's navigate command takes an absolute path, while a configured one may omit the slash. */
+private fun String.asAbsoluteFrontendPath(): String = if (startsWith("/")) this else "/$this"
+
 /** Maximum time to wait for the frontend to load before showing a timeout error. */
 @VisibleForTesting
 val CONNECTION_TIMEOUT = 10.seconds
@@ -117,6 +122,7 @@ private val FIRST_VIEW_EXCLUDED_URL_REGEX =
  *
  * This ViewModel acts as an orchestrator that delegates to specialized managers.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 internal class FrontendViewModel @VisibleForTesting constructor(
     initialServerId: Int,
@@ -140,7 +146,8 @@ internal class FrontendViewModel @VisibleForTesting constructor(
     private val barcodeScannerHandler: FrontendBarcodeScannerHandler,
     private val matterThreadHandler: FrontendMatterThreadHandler,
     private val keyChainRepository: KeyChainRepository,
-    private val screensaverController: KioskScreensaverController,
+    private val screenController: KioskScreenController,
+    private val kioskSettingsRepository: KioskSettingsRepository,
     observeKioskState: ObserveKioskStateUseCase,
 ) : ViewModel(),
     FrontendConnectionErrorStateProvider {
@@ -167,7 +174,8 @@ internal class FrontendViewModel @VisibleForTesting constructor(
         barcodeScannerHandler: FrontendBarcodeScannerHandler,
         matterThreadHandler: FrontendMatterThreadHandler,
         keyChainRepository: KeyChainRepository,
-        screensaverController: KioskScreensaverController,
+        screenController: KioskScreenController,
+        kioskSettingsRepository: KioskSettingsRepository,
         observeKioskState: ObserveKioskStateUseCase,
     ) : this(
         initialServerId = savedStateHandle.toRoute<FrontendRoute>().serverId,
@@ -191,7 +199,8 @@ internal class FrontendViewModel @VisibleForTesting constructor(
         barcodeScannerHandler = barcodeScannerHandler,
         matterThreadHandler = matterThreadHandler,
         keyChainRepository = keyChainRepository,
-        screensaverController = screensaverController,
+        screenController = screenController,
+        kioskSettingsRepository = kioskSettingsRepository,
         observeKioskState = observeKioskState,
     )
 
@@ -439,8 +448,8 @@ internal class FrontendViewModel @VisibleForTesting constructor(
                     }
                 }
             },
-        screensaverController.requests
-            .filter { it == KioskScreensaverRequest.Reload }
+        screenController.requests
+            .filter { it == KioskScreenRequest.Reload }
             .map { },
     )
 
@@ -466,6 +475,11 @@ internal class FrontendViewModel @VisibleForTesting constructor(
                     Timber.d("Reloading the dashboard for kiosk mode")
                     _webViewActions.emit(WebViewAction.Reload())
                 }
+        }
+        viewModelScope.launch {
+            screenController.requests
+                .filter { it == KioskScreenRequest.ReturnToDashboard }
+                .collect { returnToKioskDashboard() }
         }
 
         viewModelScope.launch {
@@ -836,6 +850,45 @@ internal class FrontendViewModel @VisibleForTesting constructor(
      * do not support it. History is cleared first (and awaited) so the back stack is reset before
      * the navigation lands.
      */
+    /**
+     * Navigates back to the dashboard the kiosk is configured to show.
+     *
+     * Falls back to the server's default dashboard when no path is configured, which is also what
+     * happens on a server too old for the `navigate` command.
+     */
+    private suspend fun returnToKioskDashboard() {
+        val settings = kioskSettingsRepository.getSettings()
+
+        // The kiosk's own server, not whichever one the WebView wandered onto: returning a kiosk
+        // pinned to one server by loading a path on another is not returning it at all.
+        val serverId = settings.serverId ?: _viewState.value.serverId
+        if (serverId != _viewState.value.serverId) {
+            Timber.d("Returning the kiosk to its configured server")
+            startLoad(serverId = serverId)
+            return
+        }
+
+        val path = settings.dashboardPath
+        if (path.isNullOrBlank()) {
+            navigateToDefaultDashboard(serverId)
+            return
+        }
+
+        val version = serverManager.getServer(serverId)?.version
+        if (NavigateToMessage.isAvailable(version)) {
+            Timber.d("Returning the kiosk to its configured dashboard")
+            // History is cleared first, as the default-dashboard path does: otherwise Back from
+            // the dashboard the kiosk was sent to walks through wherever it had been before.
+            val clearHistory = WebViewAction.ClearHistory()
+            _webViewActions.emit(clearHistory)
+            clearHistory.await()
+            externalBusRepository.send(NavigateToMessage(path = path.asAbsoluteFrontendPath(), replace = true))
+        } else {
+            Timber.d("Server is too old for the navigate command, returning to the default dashboard")
+            navigateToDefaultDashboard(serverId)
+        }
+    }
+
     private suspend fun navigateToDefaultDashboard(serverId: Int) {
         val clearHistory = WebViewAction.ClearHistory()
         _webViewActions.emit(clearHistory)

@@ -3,7 +3,7 @@ package io.homeassistant.companion.android.sensors
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.homeassistant.companion.android.common.R as commonR
-import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverController
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreenController
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettingsRepository
 import io.homeassistant.companion.android.common.data.servers.ServerManager
@@ -38,7 +38,7 @@ class KioskSensorManager @Inject constructor(
     override val sensorRepository: SensorRepository,
     override val serverManager: ServerManager,
     private val kioskSettingsRepository: KioskSettingsRepository,
-    private val screensaverController: KioskScreensaverController,
+    private val screensaverController: KioskScreenController,
 ) : SensorManager {
 
     companion object {

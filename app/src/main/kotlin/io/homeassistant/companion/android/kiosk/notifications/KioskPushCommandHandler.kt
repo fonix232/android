@@ -1,7 +1,7 @@
 package io.homeassistant.companion.android.kiosk.notifications
 
-import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverController
-import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverRequest
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreenController
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreenRequest
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettingsRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -16,7 +16,7 @@ import timber.log.Timber
 @Singleton
 class KioskPushCommandHandler @Inject constructor(
     private val kioskSettingsRepository: KioskSettingsRepository,
-    private val screensaverController: KioskScreensaverController,
+    private val screenController: KioskScreenController,
 ) {
 
     /**
@@ -43,9 +43,11 @@ class KioskPushCommandHandler @Inject constructor(
 
             // These two change nothing stored: they ask the screen showing the dashboard to cover
             // or uncover it now, leaving the configured timeout alone.
-            KioskPushCommand.ShowScreensaver -> screensaverController.request(KioskScreensaverRequest.Show)
-            KioskPushCommand.HideScreensaver -> screensaverController.request(KioskScreensaverRequest.Hide)
-            KioskPushCommand.Reload -> screensaverController.request(KioskScreensaverRequest.Reload)
+            KioskPushCommand.ShowScreensaver -> screenController.request(KioskScreenRequest.Show)
+            KioskPushCommand.HideScreensaver -> screenController.request(KioskScreenRequest.Hide)
+            KioskPushCommand.Reload -> screenController.request(KioskScreenRequest.Reload)
+            KioskPushCommand.ReturnToDashboard ->
+                screenController.request(KioskScreenRequest.ReturnToDashboard)
         }
         return true
     }

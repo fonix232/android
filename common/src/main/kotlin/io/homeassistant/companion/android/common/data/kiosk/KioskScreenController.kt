@@ -9,37 +9,39 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** An order to the screensaver that did not come from the user touching the device. */
-sealed interface KioskScreensaverRequest {
+/** An order to the kiosk screen that did not come from the user touching the device. */
+sealed interface KioskScreenRequest {
     /** Cover the dashboard now, without waiting for the idle timeout. */
-    data object Show : KioskScreensaverRequest
+    data object Show : KioskScreenRequest
 
     /** Uncover the dashboard now, and restart the idle countdown. */
-    data object Hide : KioskScreensaverRequest
+    data object Hide : KioskScreenRequest
 
     /** Reload the dashboard now. */
-    data object Reload : KioskScreensaverRequest
+    data object Reload : KioskScreenRequest
+
+    /** Go back to the dashboard the kiosk is configured to show. */
+    data object ReturnToDashboard : KioskScreenRequest
 }
 
 /**
- * Carries screensaver requests to the screen showing it, and its visibility back out.
+ * Carries requests to the screen showing the kiosk, and the screensaver's visibility back out.
  *
  * It exists because the two ends live apart: requests come from a server command handled
- * process-wide, visibility is reported by a sensor in this module, and the screensaver itself is
- * owned by the screen that draws it. This is the one place they meet, so neither end has to know
- * the other.
+ * process-wide, visibility is reported by a sensor in this module, and the screen that has to act
+ * on either is owned by neither. This is the one place they meet.
  *
  * Requests are dropped when no screen is listening. That is deliberate: a command to cover a
  * dashboard nobody is showing has nothing to act on, and replaying it later would cover the
  * dashboard at some unrelated moment.
  */
 @Singleton
-class KioskScreensaverController @Inject constructor() {
+class KioskScreenController @Inject constructor() {
 
-    private val _requests = MutableSharedFlow<KioskScreensaverRequest>(extraBufferCapacity = REQUEST_BUFFER)
+    private val _requests = MutableSharedFlow<KioskScreenRequest>(extraBufferCapacity = REQUEST_BUFFER)
 
     /** Requests waiting to be honored by whichever screen can show the screensaver. */
-    val requests: Flow<KioskScreensaverRequest> = _requests.asSharedFlow()
+    val requests: Flow<KioskScreenRequest> = _requests.asSharedFlow()
 
     private val _isVisible = MutableStateFlow(false)
 
@@ -47,7 +49,7 @@ class KioskScreensaverController @Inject constructor() {
     val isVisible: StateFlow<Boolean> = _isVisible.asStateFlow()
 
     /** Asks the screen to show or hide the screensaver. */
-    fun request(request: KioskScreensaverRequest) {
+    fun request(request: KioskScreenRequest) {
         _requests.tryEmit(request)
     }
 

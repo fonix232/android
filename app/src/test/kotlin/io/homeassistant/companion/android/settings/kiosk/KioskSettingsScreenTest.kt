@@ -36,11 +36,8 @@ class KioskSettingsScreenTest {
     val composeTestRule = createAndroidComposeRule<HiltComponentActivity>()
 
     private val enabledChanges = mutableListOf<Boolean>()
-    private val statusBarChanges = mutableListOf<Boolean>()
-    private val navigationBarChanges = mutableListOf<Boolean>()
-    private val brightnessChanges = mutableListOf<KioskBrightnessOption>()
+    private val displayChanges = mutableListOf<KioskDisplaySetting>()
     private val acceptRemoteCommandsChanges = mutableListOf<Boolean>()
-    private val showConfirmationsChanges = mutableListOf<Boolean>()
 
     private fun setContent(viewState: KioskSettingsViewState = KioskSettingsViewState()) {
         composeTestRule.setContent {
@@ -48,14 +45,12 @@ class KioskSettingsScreenTest {
                 KioskSettingsContent(
                     viewState = viewState,
                     onEnabledChanged = enabledChanges::add,
-                    onHideStatusBarChanged = statusBarChanges::add,
-                    onHideNavigationBarChanged = navigationBarChanges::add,
-                    onBrightnessChanged = brightnessChanges::add,
                     onRequireAuthenticationChanged = {},
-                    onKeepScreenOnChanged = {},
-                    onAutoReloadChanged = {},
                     onAcceptRemoteCommandsChanged = acceptRemoteCommandsChanges::add,
-                    onShowRemoteCommandConfirmationsChanged = showConfirmationsChanges::add,
+                    onShowRemoteCommandConfirmationsChanged = {},
+                    onServerChanged = {},
+                    onDashboardPathChanged = {},
+                    onDisplaySettingChanged = displayChanges::add,
                     onScreensaverClick = {},
                 )
             }
@@ -72,25 +67,23 @@ class KioskSettingsScreenTest {
     }
 
     @Test
-    fun `Given the status bar switch when it is tapped then only that change is reported`() {
+    fun `Given the status bar switch when it is tapped then that display setting is reported`() {
         setContent()
 
         composeTestRule.onNodeWithText(string(commonR.string.kiosk_hide_status_bar)).performScrollTo().performClick()
 
-        assertEquals(listOf(true), statusBarChanges)
-        assertEquals(emptyList<Boolean>(), navigationBarChanges)
+        assertEquals(listOf(KioskDisplaySetting.HideStatusBar(true)), displayChanges)
     }
 
     @Test
-    fun `Given the navigation bar switch when it is tapped then only that change is reported`() {
+    fun `Given the navigation bar switch when it is tapped then that display setting is reported`() {
         setContent()
 
         composeTestRule.onNodeWithText(string(commonR.string.kiosk_hide_navigation_bar))
             .performScrollTo()
             .performClick()
 
-        assertEquals(listOf(true), navigationBarChanges)
-        assertEquals(emptyList<Boolean>(), statusBarChanges)
+        assertEquals(listOf(KioskDisplaySetting.HideNavigationBar(true)), displayChanges)
     }
 
     @Test
