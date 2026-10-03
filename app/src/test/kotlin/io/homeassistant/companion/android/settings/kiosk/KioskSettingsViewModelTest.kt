@@ -144,6 +144,16 @@ class KioskSettingsViewModelTest {
     }
 
     @Test
+    fun `Given the user keeps the screen on then it is stored`() = runTest {
+        createViewModel()
+
+        viewModel.onKeepScreenOnChanged(true)
+        advanceUntilIdle()
+
+        assertTrue(repository.getSettings().keepScreenOn)
+    }
+
+    @Test
     fun `Given the user hides both system bars then both are stored`() = runTest {
         createViewModel()
         viewModel.onHideStatusBarChanged(true)

@@ -11,6 +11,7 @@ import android.os.Parcelable
 import android.view.KeyEvent
 import android.view.ViewTreeObserver
 import android.view.Window
+import android.view.WindowManager
 import android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
@@ -209,6 +210,7 @@ class LaunchActivity : AppCompatActivity() {
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                 val systemBars by viewModel.systemBars.collectAsStateWithLifecycle()
                 val forcedBrightness by viewModel.forcedBrightness.collectAsStateWithLifecycle()
+                val keepsScreenOn by viewModel.keepsScreenOn.collectAsStateWithLifecycle()
                 val screensaver by viewModel.screensaver.collectAsStateWithLifecycle()
                 val isAppLocked by viewModel.isAppLocked.collectAsStateWithLifecycle()
                 val hazeState = rememberHazeState()
@@ -217,6 +219,8 @@ class LaunchActivity : AppCompatActivity() {
                 KioskForegroundEffect(viewModel)
 
                 SystemBarsEffect(systemBars = systemBars)
+
+                KioskKeepScreenOnEffect(keepScreenOn = keepsScreenOn)
 
                 ForcedBrightnessEffect(brightness = forcedBrightness)
 
@@ -377,6 +381,26 @@ private fun KioskForegroundEffect(viewModel: LaunchViewModel) {
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
             viewModel.observeScreensaverRequests()
         }
+    }
+}
+
+/**
+ * Holds the display awake while kiosk mode asks for it.
+ *
+ * On the activity's window rather than on the frontend screen's view, so navigating to a native
+ * destination does not let a wall display go dark.
+ */
+@Composable
+private fun KioskKeepScreenOnEffect(keepScreenOn: Boolean) {
+    val window = LocalActivity.current?.window ?: return
+
+    DisposableEffect(window, keepScreenOn) {
+        if (keepScreenOn) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        onDispose { window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     }
 }
 

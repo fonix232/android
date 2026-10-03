@@ -206,6 +206,17 @@ internal class LaunchViewModel @VisibleForTesting constructor(
      */
     suspend fun observeScreensaverRequests() = screensaverManager.observeRequests()
 
+    /**
+     * Whether kiosk mode wants the display kept awake.
+     *
+     * Held by the activity's window rather than by the frontend screen, so it survives navigating
+     * to a native destination: a wall display showing its own settings should not go dark.
+     */
+    val keepsScreenOn: StateFlow<Boolean> = observeKioskState()
+        .map { it.keepsScreenOn }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
+
     /** Reports that the user is interacting with the app, which keeps the screensaver away. */
     fun onUserInteraction() {
         screensaverManager.onUserInteraction()

@@ -15,6 +15,9 @@ import kotlin.time.Duration
  */
 internal sealed interface KioskState {
 
+    /** Whether the display must be kept awake right now. */
+    val keepsScreenOn: Boolean
+
     val hidesStatusBar: Boolean
 
     val hidesNavigationBar: Boolean
@@ -27,6 +30,7 @@ internal sealed interface KioskState {
 
     /** Kiosk mode is off: nothing is hidden, and the display is left to the system and the user. */
     data object Inactive : KioskState {
+        override val keepsScreenOn: Boolean = false
         override val hidesStatusBar: Boolean = false
         override val hidesNavigationBar: Boolean = false
         override val forcedBrightness: KioskBrightness? = null
@@ -35,6 +39,7 @@ internal sealed interface KioskState {
 
     /** Kiosk mode is on, and every value here applies to the display right now. */
     data class Active(
+        override val keepsScreenOn: Boolean,
         override val hidesStatusBar: Boolean,
         override val hidesNavigationBar: Boolean,
         override val forcedBrightness: KioskBrightness?,
