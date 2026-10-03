@@ -5,6 +5,8 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import com.android.tools.screenshot.PreviewTest
 import io.homeassistant.companion.android.common.compose.theme.HAThemeForPreview
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
+import io.homeassistant.companion.android.common.data.kiosk.KioskSoundLevel
+import io.homeassistant.companion.android.common.data.kiosk.KioskSoundThreshold
 import kotlin.time.Duration.Companion.minutes
 
 class KioskScreensaverSettingsScreenshotTest {
@@ -54,9 +56,9 @@ class KioskScreensaverSettingsScreenshotTest {
                     mode = KioskScreensaverMode.CLOCK,
                     idleTimeout = 10.minutes,
                     wakeOnSound = true,
-                    soundWakeThreshold = 0.25f,
+                    soundWakeThreshold = KioskSoundThreshold.ofDbfs(-40f),
                 ),
-                soundLevel = 0.45f,
+                soundLevel = KioskSoundLevel.ofDbfs(-28f),
                 onModeChanged = {},
                 onIdleTimeoutChanged = {},
                 onWakeOnSoundChanged = {},

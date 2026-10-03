@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettingsRepository
+import io.homeassistant.companion.android.common.data.kiosk.KioskSoundLevel
 import io.homeassistant.companion.android.common.data.kiosk.KioskSoundThreshold
 import io.homeassistant.companion.android.kiosk.audio.KioskAudioWakeDetector
 import javax.inject.Inject
@@ -37,7 +38,7 @@ internal data class KioskScreensaverSettingsViewState(
     val mode: KioskScreensaverMode = KioskScreensaverMode.DISABLED,
     val idleTimeout: Duration = KioskSettings.DEFAULT_SCREENSAVER_IDLE_TIMEOUT,
     val wakeOnSound: Boolean = false,
-    val soundWakeThreshold: Float = KioskSoundThreshold.DEFAULT.value,
+    val soundWakeThreshold: KioskSoundThreshold = KioskSoundThreshold.DEFAULT,
 ) {
     /** The idle timeout only matters once a screensaver is chosen. */
     val isTimeoutRelevant: Boolean
@@ -57,7 +58,7 @@ internal class KioskScreensaverSettingsViewModel @Inject constructor(
                 mode = it.screensaverMode,
                 idleTimeout = it.screensaverIdleTimeout,
                 wakeOnSound = it.wakeOnSound,
-                soundWakeThreshold = it.soundWakeThreshold.value,
+                soundWakeThreshold = it.soundWakeThreshold,
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), KioskScreensaverSettingsViewState())
@@ -68,7 +69,7 @@ internal class KioskScreensaverSettingsViewModel @Inject constructor(
      * Collected only while this screen shows it and only once sound waking is on, so opening the
      * settings does not open the microphone.
      */
-    val soundLevel: StateFlow<Float?> = kioskSettingsRepository.settingsFlow()
+    val soundLevel: StateFlow<KioskSoundLevel?> = kioskSettingsRepository.settingsFlow()
         .map { it.wakeOnSound }
         .distinctUntilChanged()
         .flatMapLatest { enabled -> if (enabled) audioWakeDetector.levels() else flowOf(null) }
@@ -77,9 +78,14 @@ internal class KioskScreensaverSettingsViewModel @Inject constructor(
     /** Chooses whether a sound loud enough counts as somebody being there. */
     fun onWakeOnSoundChanged(wake: Boolean) = update { it.copy(wakeOnSound = wake) }
 
-    /** Chooses how loud a sound has to be before it counts. */
-    fun onSoundWakeThresholdChanged(threshold: Float) = update {
-        it.copy(soundWakeThreshold = KioskSoundThreshold.of(threshold))
+    /**
+     * Chooses how loud a sound has to be before it counts, from a point on the meter.
+     *
+     * The slider works in the meter's own 0..1 travel; the conversion to dBFS lives in
+     * [KioskSoundThreshold] so the stored unit is never in question.
+     */
+    fun onSoundWakeThresholdChanged(meterPosition: Float) = update {
+        it.copy(soundWakeThreshold = KioskSoundThreshold.ofMeterPosition(meterPosition))
     }
 
     /** Chooses what the screensaver shows, or turns it off. */

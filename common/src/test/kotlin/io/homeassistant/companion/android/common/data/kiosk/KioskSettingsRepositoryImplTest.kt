@@ -67,6 +67,13 @@ class KioskSettingsRepositoryImplTest {
     }
 
     @Test
+    fun `Given a sound threshold when round tripped then it survives as whole decibels`() = runTest {
+        repository.setSettings(KioskSettings(soundWakeThreshold = KioskSoundThreshold.ofDbfs(-37f)))
+
+        assertEquals(-37f, repository.getSettings().soundWakeThreshold.dbfs)
+    }
+
+    @Test
     fun `Given stored settings when getting settings then the stored values are returned`() = runTest {
         val stored = KioskSettings(
             enabled = true,

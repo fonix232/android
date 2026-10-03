@@ -1,5 +1,6 @@
 package io.homeassistant.companion.android.kiosk.audio
 
+import io.homeassistant.companion.android.common.data.kiosk.KioskSoundLevel
 import io.homeassistant.companion.android.common.data.kiosk.KioskSoundThreshold
 import io.homeassistant.companion.android.common.util.VoiceAudioRecorder
 import javax.inject.Inject
@@ -13,7 +14,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
-/** Full scale for 16-bit PCM, used to turn a sample into a 0..1 level. */
+/** Full scale for 16-bit PCM, used to turn a sample into a fraction of full scale. */
 private const val PCM_16_BIT_FULL_SCALE = 32768f
 
 /**
@@ -41,13 +42,15 @@ private val SUSTAINED_ABOVE_THRESHOLD = 300.milliseconds
 class KioskAudioWakeDetector @Inject constructor(private val voiceAudioRecorder: VoiceAudioRecorder) {
 
     /**
-     * Emits the current input level, between 0 and 1, roughly every 10 milliseconds.
+     * Emits the current input level, roughly every 10 milliseconds.
      *
      * Each value is the root mean square of one chunk of samples, which tracks how loud a sound is
-     * perceived to be far better than the loudest single sample would.
+     * perceived to be far better than the loudest single sample would, expressed in dBFS because
+     * hearing is logarithmic: on a linear amplitude scale every sound a room produces is crowded
+     * into the bottom tenth.
      */
-    fun levels(): Flow<Float> = flow {
-        emitAll(voiceAudioRecorder.audioData().map { it.rootMeanSquare() })
+    fun levels(): Flow<KioskSoundLevel> = flow {
+        emitAll(voiceAudioRecorder.audioData().map { KioskSoundLevel.ofAmplitude(it.rootMeanSquare()) })
     }
 
     /**
@@ -57,7 +60,7 @@ class KioskAudioWakeDetector @Inject constructor(private val voiceAudioRecorder:
      * there, and the quiet that has to follow before the next one is what makes that meaningful.
      */
     fun soundDetections(threshold: KioskSoundThreshold): Flow<Unit> = levels()
-        .aboveFor(threshold.value, SUSTAINED_ABOVE_THRESHOLD)
+        .aboveFor(threshold, SUSTAINED_ABOVE_THRESHOLD)
         .filter { it }
         .map { }
 }
@@ -80,13 +83,13 @@ private fun ShortArray.rootMeanSquare(): Float {
  * Counting chunks rather than reading a clock keeps this testable without one: the recorder emits
  * at a fixed rate, so a count of chunks is a duration.
  */
-private fun Flow<Float>.aboveFor(threshold: Float, duration: Duration): Flow<Boolean> = flow {
+private fun Flow<KioskSoundLevel>.aboveFor(threshold: KioskSoundThreshold, duration: Duration): Flow<Boolean> = flow {
     val chunksRequired = (duration / CHUNK_DURATION).toInt().coerceAtLeast(1)
     var consecutiveAbove = 0
     var reported = false
 
     collect { level ->
-        if (level > threshold) {
+        if (level.dbfs > threshold.dbfs) {
             consecutiveAbove++
             if (consecutiveAbove >= chunksRequired && !reported) {
                 reported = true

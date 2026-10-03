@@ -5,21 +5,28 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import io.homeassistant.companion.android.common.R as commonR
 import io.homeassistant.companion.android.common.compose.composable.HASettingsCard
 import io.homeassistant.companion.android.common.compose.composable.HASlider
 import io.homeassistant.companion.android.common.compose.theme.HADimens
 import io.homeassistant.companion.android.common.compose.theme.HARadius
+import io.homeassistant.companion.android.common.compose.theme.HATextStyle
 import io.homeassistant.companion.android.common.compose.theme.LocalHAColorScheme
+import io.homeassistant.companion.android.common.data.kiosk.KioskSoundLevel
+import io.homeassistant.companion.android.common.data.kiosk.KioskSoundThreshold
+import kotlin.math.roundToInt
 
 /** Height of the level meter bar. */
 private val METER_HEIGHT = HADimens.SPACE3
@@ -27,13 +34,18 @@ private val METER_HEIGHT = HADimens.SPACE3
 /**
  * The sound-waking settings: the toggle, and the meter and slider used to calibrate it.
  *
- * [level] is the current microphone level, 0..1, or `null` when nothing is listening.
+ * [level] is the current microphone level, or `null` when nothing is listening. Both it and
+ * [threshold] are in dBFS and are placed on the meter by the same mapping, so the bar and the
+ * marker can be read against each other.
+ *
+ * [onThresholdChanged] receives a point on the meter's 0..1 travel, which is what the slider works
+ * in; turning that into a level is the model's job.
  */
 @Composable
 internal fun SoundWakeSection(
     wakeOnSound: Boolean,
-    threshold: Float,
-    level: Float?,
+    threshold: KioskSoundThreshold,
+    level: KioskSoundLevel?,
     onWakeOnSoundChanged: (Boolean) -> Unit,
     onThresholdChanged: (Float) -> Unit,
 ) {
@@ -57,10 +69,11 @@ internal fun SoundWakeSection(
                     Column(verticalArrangement = Arrangement.spacedBy(HADimens.SPACE2)) {
                         SoundLevelMeter(level = level, threshold = threshold)
                         HASlider(
-                            value = threshold,
+                            value = threshold.meterPosition,
                             onValueChange = onThresholdChanged,
                             modifier = Modifier.fillMaxWidth(),
                         )
+                        SoundLevelReadout(level = level, threshold = threshold)
                     }
                 }
             }
@@ -77,7 +90,7 @@ internal fun SoundWakeSection(
  * the line just under it. A number on its own would mean nothing.
  */
 @Composable
-private fun SoundLevelMeter(level: Float?, threshold: Float) {
+private fun SoundLevelMeter(level: KioskSoundLevel?, threshold: KioskSoundThreshold) {
     val colorScheme = LocalHAColorScheme.current
 
     Box(
@@ -107,9 +120,9 @@ private fun SoundLevelMeter(level: Float?, threshold: Float) {
             modifier = Modifier.fillMaxWidth(),
         ) { measurables, constraints ->
             val trackWidth = constraints.maxWidth
-            val levelWidth = ((level ?: 0f).coerceIn(0f, 1f) * trackWidth).toInt()
+            val levelWidth = ((level?.meterPosition ?: 0f) * trackWidth).toInt()
             val markerWidth = MARKER_WIDTH_PX
-            val markerX = (threshold.coerceIn(0f, 1f) * trackWidth).toInt()
+            val markerX = (threshold.meterPosition * trackWidth).toInt()
                 .coerceAtMost(trackWidth - markerWidth)
 
             val bar = measurables[0].measure(constraints.copy(minWidth = levelWidth, maxWidth = levelWidth))
@@ -119,6 +132,43 @@ private fun SoundLevelMeter(level: Float?, threshold: Float) {
                 bar.place(0, 0)
                 marker.place(markerX, 0)
             }
+        }
+    }
+}
+
+/**
+ * The numbers behind the bar: where the line is set, and what the microphone hears right now.
+ *
+ * The bar alone is enough to calibrate by, but it cannot be reported or compared. Decibels can:
+ * "it only reaches -45 dB when I shout" is something a user can tell somebody, and it is also the
+ * quickest way to see that the scale itself is behaving.
+ */
+@Composable
+private fun SoundLevelReadout(level: KioskSoundLevel?, threshold: KioskSoundThreshold) {
+    val colorScheme = LocalHAColorScheme.current
+    val thresholdText = stringResource(
+        commonR.string.kiosk_sound_wake_threshold_value,
+        threshold.dbfs.roundToInt(),
+    )
+    val levelText = level?.let {
+        stringResource(commonR.string.kiosk_sound_wake_level_value, it.dbfs.roundToInt())
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = thresholdText,
+            style = HATextStyle.BodyMedium,
+            color = colorScheme.colorTextSecondary,
+        )
+        if (levelText != null) {
+            Text(
+                text = levelText,
+                style = HATextStyle.BodyMedium.copy(textAlign = TextAlign.End),
+                color = colorScheme.colorTextSecondary,
+            )
         }
     }
 }

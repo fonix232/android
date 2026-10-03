@@ -1,6 +1,7 @@
 package io.homeassistant.companion.android.kiosk.audio
 
 import app.cash.turbine.test
+import io.homeassistant.companion.android.common.data.kiosk.KIOSK_SOUND_FLOOR_DBFS
 import io.homeassistant.companion.android.common.data.kiosk.KioskSoundThreshold
 import io.homeassistant.companion.android.common.util.VoiceAudioRecorder
 import io.mockk.coEvery
@@ -15,15 +16,16 @@ import org.junit.jupiter.api.Test
 /** Number of 10 ms chunks that make up the sustained window the detector requires. */
 private const val SUSTAINED_CHUNKS = 30
 
-/** A chunk of samples whose root mean square is [level] of full scale. */
-private fun chunkAt(level: Float): ShortArray {
-    val amplitude = (level * 32768f).roundToInt().toShort()
+/** A chunk of samples whose root mean square is [amplitudeFraction] of full scale. */
+private fun chunkAt(amplitudeFraction: Float): ShortArray {
+    val amplitude = (amplitudeFraction * 32768f).roundToInt().toShort()
     return ShortArray(160) { amplitude }
 }
 
 class KioskAudioWakeDetectorTest {
 
-    private val threshold = KioskSoundThreshold.of(0.2f)
+    // -20 dBFS, which is a tenth of full scale in amplitude.
+    private val threshold = KioskSoundThreshold.ofDbfs(-20f)
 
     /**
      * A detector reading a canned recording, given as (level, number of 10 ms chunks) pairs.
@@ -32,7 +34,7 @@ class KioskAudioWakeDetectorTest {
      * than faked; the detector only ever calls [VoiceAudioRecorder.audioData].
      */
     private fun detectorFor(vararg levels: Pair<Float, Int>): KioskAudioWakeDetector {
-        val chunks = levels.flatMap { (level, count) -> List(count) { chunkAt(level) } }
+        val chunks = levels.flatMap { (amplitude, count) -> List(count) { chunkAt(amplitude) } }
         val recorder = mockk<VoiceAudioRecorder> {
             coEvery { audioData() } returns flowOf(*chunks.toTypedArray())
         }
@@ -77,24 +79,47 @@ class KioskAudioWakeDetectorTest {
 
     @Test
     fun `Given sound below the threshold then nothing is detected however long it lasts`() = runTest {
-        detectorFor(0.1f to SUSTAINED_CHUNKS * 4).soundDetections(threshold).test {
+        // -40 dBFS, half the meter below the threshold.
+        detectorFor(0.01f to SUSTAINED_CHUNKS * 4).soundDetections(threshold).test {
             awaitComplete()
         }
     }
 
     @Test
-    fun `Given a loud chunk then the reported level reflects it`() = runTest {
+    fun `Given a chunk at half of full scale then the reported level is about minus 6 dBFS`() = runTest {
+        // Half the amplitude is -6.02 dBFS, which is what makes this a logarithmic scale: half as
+        // loud is a small step down from the top, not half way to the bottom.
         detectorFor(0.5f to 1).levels().test {
-            val level = awaitItem()
-            assertTrue(level > 0.45f && level < 0.55f, "expected about 0.5 but was $level")
+            val dbfs = awaitItem().dbfs
+            assertTrue(dbfs > -7f && dbfs < -5f, "expected about -6 dBFS but was $dbfs")
             awaitComplete()
         }
     }
 
     @Test
-    fun `Given silence then the reported level is zero`() = runTest {
+    fun `Given a chunk at a tenth of full scale then the reported level is about minus 20 dBFS`() = runTest {
+        detectorFor(0.1f to 1).levels().test {
+            val dbfs = awaitItem().dbfs
+            assertTrue(dbfs > -21f && dbfs < -19f, "expected about -20 dBFS but was $dbfs")
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `Given speech level audio then it lands in the middle of the meter rather than the bottom`() = runTest {
+        // The bug this guards: an amplitude of 0.03 is what ordinary speech produces at a tablet,
+        // and on a linear scale it sat in the bottom few percent of the meter.
+        detectorFor(0.03f to 1).levels().test {
+            val position = awaitItem().meterPosition
+            assertTrue(position > 0.3f && position < 0.7f, "expected mid-meter but was $position")
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `Given digital silence then the reported level is the meter floor`() = runTest {
         detectorFor(0f to 1).levels().test {
-            assertEquals(0f, awaitItem())
+            assertEquals(KIOSK_SOUND_FLOOR_DBFS, awaitItem().dbfs)
             awaitComplete()
         }
     }

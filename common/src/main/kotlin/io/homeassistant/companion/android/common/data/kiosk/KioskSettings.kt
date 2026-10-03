@@ -88,29 +88,34 @@ enum class KioskScreensaverMode(val storageValue: String) {
 }
 
 /**
- * How loud a sound has to be to count as somebody being there, as a fraction of full scale.
+ * How loud a sound has to be to count as somebody being there, in dBFS.
  *
- * Values are always within [MIN_VALUE]..[MAX_VALUE]; the constructor clamps anything outside that
- * range, so a malformed stored value degrades to the nearest usable threshold rather than leaving
- * the screensaver permanently awake or permanently asleep.
+ * Values are always within [KIOSK_SOUND_FLOOR_DBFS]..[KIOSK_SOUND_CEILING_DBFS]; the constructor
+ * clamps anything outside that range, so a malformed stored value degrades to the nearest usable
+ * threshold rather than leaving the screensaver permanently awake or permanently asleep.
  */
 @JvmInline
-value class KioskSoundThreshold private constructor(val value: Float) {
+value class KioskSoundThreshold private constructor(val dbfs: Float) {
+
+    /** Where this threshold sits on the meter, 0..1. */
+    val meterPosition: Float get() = dbfsToMeterPosition(dbfs)
 
     companion object {
-        const val MIN_VALUE: Float = 0f
-        const val MAX_VALUE: Float = 1f
-
         /**
          * Threshold used until the user calibrates one.
          *
-         * Sits above a quiet room's noise floor but below ordinary speech, so the feature does
-         * something sensible before anyone opens the meter.
+         * Sits above a quiet room, which reads around -50 dBFS on a tablet microphone, and below
+         * someone speaking at the device, which reads around -30, so the feature does something
+         * sensible before anyone opens the meter.
          */
-        val DEFAULT: KioskSoundThreshold = KioskSoundThreshold(0.15f)
+        val DEFAULT: KioskSoundThreshold = KioskSoundThreshold(-40f)
 
-        /** Returns a threshold clamped into [MIN_VALUE]..[MAX_VALUE]. */
-        fun of(value: Float): KioskSoundThreshold = KioskSoundThreshold(value.coerceIn(MIN_VALUE, MAX_VALUE))
+        /** Returns a threshold clamped into the meter's window. */
+        fun ofDbfs(dbfs: Float): KioskSoundThreshold =
+            KioskSoundThreshold(dbfs.coerceIn(KIOSK_SOUND_FLOOR_DBFS, KIOSK_SOUND_CEILING_DBFS))
+
+        /** Returns the threshold a point on the meter stands for. */
+        fun ofMeterPosition(position: Float): KioskSoundThreshold = ofDbfs(meterPositionToDbfs(position))
     }
 }
 

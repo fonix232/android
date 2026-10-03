@@ -28,6 +28,7 @@ import io.homeassistant.companion.android.common.compose.composable.HASettingsCa
 import io.homeassistant.companion.android.common.compose.theme.HADimens
 import io.homeassistant.companion.android.common.compose.theme.HAThemeForPreview
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
+import io.homeassistant.companion.android.common.data.kiosk.KioskSoundLevel
 import io.homeassistant.companion.android.util.plus
 import io.homeassistant.companion.android.util.safeBottomPaddingValues
 import kotlin.time.Duration
@@ -62,7 +63,7 @@ internal fun KioskScreensaverSettingsScreen(
 @VisibleForTesting
 internal fun KioskScreensaverSettingsContent(
     viewState: KioskScreensaverSettingsViewState,
-    soundLevel: Float?,
+    soundLevel: KioskSoundLevel?,
     onModeChanged: (KioskScreensaverMode) -> Unit,
     onIdleTimeoutChanged: (Duration) -> Unit,
     onWakeOnSoundChanged: (Boolean) -> Unit,
@@ -181,6 +182,9 @@ private fun android.content.Context.formatTimeout(timeout: Duration): String {
 
 private const val MINUTES_PER_HOUR = 60
 
+/** A level in the middle of the meter, where someone speaking at the device lands. */
+private const val PREVIEW_SOUND_LEVEL_DBFS = -28f
+
 @Preview
 @Composable
 private fun KioskScreensaverSettingsContentPreview() {
@@ -191,7 +195,7 @@ private fun KioskScreensaverSettingsContentPreview() {
                 idleTimeout = 5.minutes,
                 wakeOnSound = true,
             ),
-            soundLevel = 0.3f,
+            soundLevel = KioskSoundLevel.ofDbfs(PREVIEW_SOUND_LEVEL_DBFS),
             onModeChanged = {},
             onIdleTimeoutChanged = {},
             onWakeOnSoundChanged = {},

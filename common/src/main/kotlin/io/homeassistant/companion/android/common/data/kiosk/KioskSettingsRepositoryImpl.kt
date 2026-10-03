@@ -22,12 +22,9 @@ private const val PREF_KIOSK_HIDE_NAVIGATION_BAR = "kiosk_hide_navigation_bar"
 private const val PREF_KIOSK_BRIGHTNESS_PERCENT = "kiosk_brightness_percent"
 private const val PREF_KIOSK_AUTO_RELOAD = "kiosk_auto_reload"
 private const val PREF_KIOSK_WAKE_ON_SOUND = "kiosk_wake_on_sound"
-private const val PREF_KIOSK_SOUND_WAKE_THRESHOLD_PERCENT = "kiosk_sound_wake_threshold_percent"
+private const val PREF_KIOSK_SOUND_WAKE_THRESHOLD_DBFS = "kiosk_sound_wake_threshold_dbfs"
 private const val PREF_KIOSK_SCREENSAVER_MODE = "kiosk_screensaver_mode"
 private const val PREF_KIOSK_SCREENSAVER_IDLE_TIMEOUT_SECONDS = "kiosk_screensaver_idle_timeout_seconds"
-
-/** Thresholds are stored as whole percentages, the same way brightness is. */
-private const val PERCENT_SCALE = 100f
 
 internal class KioskSettingsRepositoryImpl @Inject constructor(
     @NamedKioskStorage private val localStorage: LocalStorage,
@@ -55,10 +52,7 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
         localStorage.putInt(PREF_KIOSK_BRIGHTNESS_PERCENT, settings.brightness?.toPercent())
         localStorage.putString(PREF_KIOSK_AUTO_RELOAD, settings.autoReload.storageValue)
         localStorage.putBoolean(PREF_KIOSK_WAKE_ON_SOUND, settings.wakeOnSound)
-        localStorage.putInt(
-            PREF_KIOSK_SOUND_WAKE_THRESHOLD_PERCENT,
-            (settings.soundWakeThreshold.value * PERCENT_SCALE).toInt(),
-        )
+        localStorage.putInt(PREF_KIOSK_SOUND_WAKE_THRESHOLD_DBFS, settings.soundWakeThreshold.dbfs.toInt())
         localStorage.putString(PREF_KIOSK_SCREENSAVER_MODE, settings.screensaverMode.storageValue)
         localStorage.putLong(PREF_KIOSK_SCREENSAVER_IDLE_TIMEOUT_SECONDS, idleTimeout.inWholeSeconds)
     }
@@ -80,7 +74,7 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
                 PREF_KIOSK_BRIGHTNESS_PERCENT,
                 PREF_KIOSK_AUTO_RELOAD,
                 PREF_KIOSK_WAKE_ON_SOUND,
-                PREF_KIOSK_SOUND_WAKE_THRESHOLD_PERCENT,
+                PREF_KIOSK_SOUND_WAKE_THRESHOLD_DBFS,
                 PREF_KIOSK_SCREENSAVER_MODE,
                 PREF_KIOSK_SCREENSAVER_IDLE_TIMEOUT_SECONDS,
             ) { readSettings() },
@@ -111,8 +105,8 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
             brightness = KioskBrightness.fromPercent(localStorage.getInt(PREF_KIOSK_BRIGHTNESS_PERCENT)),
             autoReload = KioskAutoReloadInterval.fromStorageValue(localStorage.getString(PREF_KIOSK_AUTO_RELOAD)),
             wakeOnSound = localStorage.getBoolean(PREF_KIOSK_WAKE_ON_SOUND),
-            soundWakeThreshold = localStorage.getInt(PREF_KIOSK_SOUND_WAKE_THRESHOLD_PERCENT)
-                ?.let { KioskSoundThreshold.of(it / PERCENT_SCALE) }
+            soundWakeThreshold = localStorage.getInt(PREF_KIOSK_SOUND_WAKE_THRESHOLD_DBFS)
+                ?.let { KioskSoundThreshold.ofDbfs(it.toFloat()) }
                 ?: KioskSoundThreshold.DEFAULT,
             screensaverMode = KioskScreensaverMode.fromStorageValue(
                 localStorage.getString(PREF_KIOSK_SCREENSAVER_MODE),

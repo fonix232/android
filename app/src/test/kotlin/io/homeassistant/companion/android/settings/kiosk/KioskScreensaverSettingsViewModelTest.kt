@@ -1,9 +1,10 @@
 package io.homeassistant.companion.android.settings.kiosk
 
 import app.cash.turbine.test
+import io.homeassistant.companion.android.common.data.kiosk.KIOSK_SOUND_CEILING_DBFS
+import io.homeassistant.companion.android.common.data.kiosk.KIOSK_SOUND_FLOOR_DBFS
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
-import io.homeassistant.companion.android.common.data.kiosk.KioskSoundThreshold
 import io.homeassistant.companion.android.kiosk.FakeKioskSettingsRepository
 import io.homeassistant.companion.android.testing.unit.MainDispatcherJUnit5Extension
 import io.mockk.mockk
@@ -92,13 +93,43 @@ class KioskScreensaverSettingsViewModelTest {
     }
 
     @Test
-    fun `Given the user drags the threshold then it is stored clamped`() = runTest {
+    fun `Given the user drags the threshold to the top then the loudest level is stored`() = runTest {
+        createViewModel()
+
+        viewModel.onSoundWakeThresholdChanged(1f)
+        advanceUntilIdle()
+
+        assertEquals(KIOSK_SOUND_CEILING_DBFS, repository.getSettings().soundWakeThreshold.dbfs)
+    }
+
+    @Test
+    fun `Given the user drags the threshold past the end then it is stored clamped`() = runTest {
         createViewModel()
 
         viewModel.onSoundWakeThresholdChanged(2f)
         advanceUntilIdle()
 
-        assertEquals(KioskSoundThreshold.MAX_VALUE, repository.getSettings().soundWakeThreshold.value)
+        assertEquals(KIOSK_SOUND_CEILING_DBFS, repository.getSettings().soundWakeThreshold.dbfs)
+    }
+
+    @Test
+    fun `Given the user drags the threshold to the bottom then the meter floor is stored`() = runTest {
+        createViewModel()
+
+        viewModel.onSoundWakeThresholdChanged(0f)
+        advanceUntilIdle()
+
+        assertEquals(KIOSK_SOUND_FLOOR_DBFS, repository.getSettings().soundWakeThreshold.dbfs)
+    }
+
+    @Test
+    fun `Given the user drags the threshold to the middle then the midpoint level is stored`() = runTest {
+        createViewModel()
+
+        viewModel.onSoundWakeThresholdChanged(0.5f)
+        advanceUntilIdle()
+
+        assertEquals(-30f, repository.getSettings().soundWakeThreshold.dbfs)
     }
 
     @Test
