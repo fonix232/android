@@ -7,11 +7,14 @@ import io.homeassistant.companion.android.common.data.kiosk.KioskAutoReloadInter
 import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettingsRepository
+import io.homeassistant.companion.android.common.data.servers.ServerManager
 import javax.inject.Inject
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -25,6 +28,28 @@ internal sealed interface KioskBrightnessOption {
     data object SystemAdjusted : KioskBrightnessOption
 
     data class Fixed(val percent: Int) : KioskBrightnessOption
+}
+
+/** A server the kiosk can be pinned to, named for the picker. */
+internal data class KioskServerOption(val id: Int, val name: String)
+
+/**
+ * One of the display choices on the kiosk settings screen.
+ *
+ * They arrive through a single event rather than a function each because they are the same kind of
+ * choice made in the same section, and one exhaustive `when` is easier to keep complete than five
+ * one-line functions are to keep in step.
+ */
+internal sealed interface KioskDisplaySetting {
+    data class KeepScreenOn(val enabled: Boolean) : KioskDisplaySetting
+
+    data class HideStatusBar(val hidden: Boolean) : KioskDisplaySetting
+
+    data class HideNavigationBar(val hidden: Boolean) : KioskDisplaySetting
+
+    data class Brightness(val option: KioskBrightnessOption) : KioskDisplaySetting
+
+    data class AutoReload(val interval: KioskAutoReloadInterval) : KioskDisplaySetting
 }
 
 /** What the kiosk settings screen renders. */
@@ -55,6 +80,9 @@ internal data class KioskSettingsViewState(
     val requireAuthentication: Boolean = false,
     val acceptRemoteCommands: Boolean = true,
     val showRemoteCommandConfirmations: Boolean = true,
+    val servers: List<KioskServerOption> = emptyList(),
+    val serverId: Int? = null,
+    val dashboardPath: String = "",
     val autoReload: KioskAutoReloadInterval = KioskAutoReloadInterval.NEVER,
     val keepScreenOn: Boolean = false,
     val hideStatusBar: Boolean = false,
@@ -65,12 +93,17 @@ internal data class KioskSettingsViewState(
 @HiltViewModel
 internal class KioskSettingsViewModel @Inject constructor(
     private val kioskSettingsRepository: KioskSettingsRepository,
+    serverManager: ServerManager,
 ) : ViewModel() {
 
     private val unlocked = MutableStateFlow(false)
 
+    private val servers: Flow<List<KioskServerOption>> = flow {
+        emit(serverManager.servers().map { KioskServerOption(id = it.id, name = it.friendlyName) })
+    }
+
     val viewState: StateFlow<KioskSettingsViewState> =
-        combine(kioskSettingsRepository.settingsFlow(), unlocked, KioskSettings::toViewState)
+        combine(kioskSettingsRepository.settingsFlow(), unlocked, servers, KioskSettings::toViewState)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), KioskSettingsViewState())
 
     /** Turns kiosk mode on or off. */
@@ -92,26 +125,26 @@ internal class KioskSettingsViewModel @Inject constructor(
         it.copy(showRemoteCommandConfirmations = show)
     }
 
-    /** Chooses how often the dashboard reloads on its own. */
-    fun onAutoReloadChanged(interval: KioskAutoReloadInterval) = update { it.copy(autoReload = interval) }
+    /** Pins the kiosk to a server, or to whichever is active when [serverId] is null. */
+    fun onServerChanged(serverId: Int?) = update { it.copy(serverId = serverId) }
 
-    /** Chooses whether the display is kept awake while kiosk mode is on. */
-    fun onKeepScreenOnChanged(keep: Boolean) = update { it.copy(keepScreenOn = keep) }
+    /** Sets the dashboard this kiosk returns to; blank means the server's default. */
+    fun onDashboardPathChanged(path: String) = update { it.copy(dashboardPath = path.takeIf { p -> p.isNotBlank() }) }
 
-    /** Chooses whether the status bar is hidden while kiosk mode is on. */
-    fun onHideStatusBarChanged(hide: Boolean) = update { it.copy(hideStatusBar = hide) }
-
-    /** Chooses whether the navigation bar is hidden while kiosk mode is on. */
-    fun onHideNavigationBarChanged(hide: Boolean) = update { it.copy(hideNavigationBar = hide) }
-
-    /** Chooses the brightness kiosk mode forces, or leaves it to the system. */
-    fun onBrightnessChanged(option: KioskBrightnessOption) = update {
-        it.copy(
-            brightness = when (option) {
-                KioskBrightnessOption.SystemAdjusted -> null
-                is KioskBrightnessOption.Fixed -> KioskBrightness.fromPercent(option.percent)
-            },
-        )
+    /** Applies one of the display choices. */
+    fun onDisplaySettingChanged(setting: KioskDisplaySetting) = update { settings ->
+        when (setting) {
+            is KioskDisplaySetting.KeepScreenOn -> settings.copy(keepScreenOn = setting.enabled)
+            is KioskDisplaySetting.HideStatusBar -> settings.copy(hideStatusBar = setting.hidden)
+            is KioskDisplaySetting.HideNavigationBar -> settings.copy(hideNavigationBar = setting.hidden)
+            is KioskDisplaySetting.AutoReload -> settings.copy(autoReload = setting.interval)
+            is KioskDisplaySetting.Brightness -> settings.copy(
+                brightness = when (val option = setting.option) {
+                    KioskBrightnessOption.SystemAdjusted -> null
+                    is KioskBrightnessOption.Fixed -> KioskBrightness.fromPercent(option.percent)
+                },
+            )
+        }
     }
 
     /**
@@ -127,21 +160,25 @@ internal class KioskSettingsViewModel @Inject constructor(
     }
 }
 
-private fun KioskSettings.toViewState(unlocked: Boolean): KioskSettingsViewState = KioskSettingsViewState(
-    lock = when {
-        !requireAuthentication -> KioskSettingsLock.NOT_REQUIRED
-        unlocked -> KioskSettingsLock.UNLOCKED
-        else -> KioskSettingsLock.LOCKED
-    },
-    enabled = enabled,
-    requireAuthentication = requireAuthentication,
-    acceptRemoteCommands = acceptRemoteCommands,
-    showRemoteCommandConfirmations = showRemoteCommandConfirmations,
-    autoReload = autoReload,
-    keepScreenOn = keepScreenOn,
-    hideStatusBar = hideStatusBar,
-    hideNavigationBar = hideNavigationBar,
-    brightness = brightness
-        ?.let { KioskBrightnessOption.Fixed(it.toPercent()) }
-        ?: KioskBrightnessOption.SystemAdjusted,
-)
+private fun KioskSettings.toViewState(unlocked: Boolean, servers: List<KioskServerOption>): KioskSettingsViewState =
+    KioskSettingsViewState(
+        servers = servers,
+        serverId = serverId,
+        dashboardPath = dashboardPath.orEmpty(),
+        lock = when {
+            !requireAuthentication -> KioskSettingsLock.NOT_REQUIRED
+            unlocked -> KioskSettingsLock.UNLOCKED
+            else -> KioskSettingsLock.LOCKED
+        },
+        enabled = enabled,
+        requireAuthentication = requireAuthentication,
+        acceptRemoteCommands = acceptRemoteCommands,
+        showRemoteCommandConfirmations = showRemoteCommandConfirmations,
+        autoReload = autoReload,
+        keepScreenOn = keepScreenOn,
+        hideStatusBar = hideStatusBar,
+        hideNavigationBar = hideNavigationBar,
+        brightness = brightness
+            ?.let { KioskBrightnessOption.Fixed(it.toPercent()) }
+            ?: KioskBrightnessOption.SystemAdjusted,
+    )

@@ -29,7 +29,6 @@ import io.homeassistant.companion.android.common.compose.theme.HADimens
 import io.homeassistant.companion.android.common.compose.theme.HATextStyle
 import io.homeassistant.companion.android.common.compose.theme.HAThemeForPreview
 import io.homeassistant.companion.android.common.compose.theme.LocalHAColorScheme
-import io.homeassistant.companion.android.common.data.kiosk.KioskAutoReloadInterval
 import io.homeassistant.companion.android.util.plus
 import io.homeassistant.companion.android.util.safeBottomPaddingValues
 import org.jetbrains.annotations.VisibleForTesting
@@ -66,11 +65,9 @@ internal fun KioskSettingsScreen(
         onRequireAuthenticationChanged = viewModel::onRequireAuthenticationChanged,
         onAcceptRemoteCommandsChanged = viewModel::onAcceptRemoteCommandsChanged,
         onShowRemoteCommandConfirmationsChanged = viewModel::onShowRemoteCommandConfirmationsChanged,
-        onAutoReloadChanged = viewModel::onAutoReloadChanged,
-        onKeepScreenOnChanged = viewModel::onKeepScreenOnChanged,
-        onHideStatusBarChanged = viewModel::onHideStatusBarChanged,
-        onHideNavigationBarChanged = viewModel::onHideNavigationBarChanged,
-        onBrightnessChanged = viewModel::onBrightnessChanged,
+        onServerChanged = viewModel::onServerChanged,
+        onDashboardPathChanged = viewModel::onDashboardPathChanged,
+        onDisplaySettingChanged = viewModel::onDisplaySettingChanged,
         onScreensaverClick = onScreensaverClick,
         modifier = modifier,
     )
@@ -84,11 +81,9 @@ internal fun KioskSettingsContent(
     onRequireAuthenticationChanged: (Boolean) -> Unit,
     onAcceptRemoteCommandsChanged: (Boolean) -> Unit,
     onShowRemoteCommandConfirmationsChanged: (Boolean) -> Unit,
-    onAutoReloadChanged: (KioskAutoReloadInterval) -> Unit,
-    onKeepScreenOnChanged: (Boolean) -> Unit,
-    onHideStatusBarChanged: (Boolean) -> Unit,
-    onHideNavigationBarChanged: (Boolean) -> Unit,
-    onBrightnessChanged: (KioskBrightnessOption) -> Unit,
+    onServerChanged: (Int?) -> Unit,
+    onDashboardPathChanged: (String) -> Unit,
+    onDisplaySettingChanged: (KioskDisplaySetting) -> Unit,
     onScreensaverClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -117,6 +112,14 @@ internal fun KioskSettingsContent(
             )
         }
 
+        DashboardSection(
+            servers = viewState.servers,
+            selectedServerId = viewState.serverId,
+            dashboardPath = viewState.dashboardPath,
+            onServerChanged = onServerChanged,
+            onDashboardPathChanged = onDashboardPathChanged,
+        )
+
         RemoteCommandsSection(
             acceptRemoteCommands = viewState.acceptRemoteCommands,
             showRemoteCommandConfirmations = viewState.showRemoteCommandConfirmations,
@@ -130,11 +133,7 @@ internal fun KioskSettingsContent(
             hideStatusBar = viewState.hideStatusBar,
             hideNavigationBar = viewState.hideNavigationBar,
             brightness = viewState.brightness,
-            onAutoReloadChanged = onAutoReloadChanged,
-            onKeepScreenOnChanged = onKeepScreenOnChanged,
-            onHideStatusBarChanged = onHideStatusBarChanged,
-            onHideNavigationBarChanged = onHideNavigationBarChanged,
-            onBrightnessChanged = onBrightnessChanged,
+            onDisplaySettingChanged = onDisplaySettingChanged,
         )
 
         HASettingsCard {
@@ -239,11 +238,9 @@ private fun KioskSettingsContentPreview() {
             onRequireAuthenticationChanged = {},
             onAcceptRemoteCommandsChanged = {},
             onShowRemoteCommandConfirmationsChanged = {},
-            onAutoReloadChanged = {},
-            onKeepScreenOnChanged = {},
-            onHideStatusBarChanged = {},
-            onHideNavigationBarChanged = {},
-            onBrightnessChanged = {},
+            onServerChanged = {},
+            onDashboardPathChanged = {},
+            onDisplaySettingChanged = {},
             onScreensaverClick = {},
         )
     }

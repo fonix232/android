@@ -1551,6 +1551,12 @@
     <string name="kiosk_require_authentication_summary">Ask for this device\'s screen lock before showing kiosk settings.</string>
     <string name="kiosk_locked_title">Kiosk settings are protected</string>
     <string name="kiosk_locked_unlock">Unlock</string>
+    <string name="kiosk_dashboard_title">Dashboard</string>
+    <string name="kiosk_dashboard_server">Server</string>
+    <string name="kiosk_dashboard_server_active">Whichever is active</string>
+    <string name="kiosk_dashboard_path">Dashboard path</string>
+    <string name="kiosk_dashboard_path_placeholder">lovelace/wall</string>
+    <string name="kiosk_dashboard_footer">The dashboard this device shows, and returns to when asked. Leave the path empty for the server\'s default dashboard.</string>
     <string name="kiosk_remote_commands_title">Remote control</string>
     <string name="kiosk_accept_remote_commands">Accept commands from Home Assistant</string>
     <string name="kiosk_show_remote_command_confirmations">Confirm commands on screen</string>

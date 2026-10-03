@@ -4,8 +4,11 @@ import app.cash.turbine.test
 import io.homeassistant.companion.android.common.data.kiosk.KioskAutoReloadInterval
 import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
+import io.homeassistant.companion.android.common.data.servers.ServerManager
 import io.homeassistant.companion.android.kiosk.FakeKioskSettingsRepository
 import io.homeassistant.companion.android.testing.unit.MainDispatcherJUnit5Extension
+import io.mockk.coEvery
+import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -21,6 +24,9 @@ import org.junit.jupiter.api.extension.ExtendWith
 class KioskSettingsViewModelTest {
 
     private val repository = FakeKioskSettingsRepository()
+    private val serverManager: ServerManager = mockk {
+        coEvery { servers() } returns emptyList()
+    }
     private lateinit var viewModel: KioskSettingsViewModel
 
     /**
@@ -28,7 +34,7 @@ class KioskSettingsViewModelTest {
      * `viewModelScope` runs on the scheduler the test advances.
      */
     private fun createViewModel() {
-        viewModel = KioskSettingsViewModel(repository)
+        viewModel = KioskSettingsViewModel(repository, serverManager)
     }
 
     @Test
@@ -148,7 +154,7 @@ class KioskSettingsViewModelTest {
     fun `Given the user picks a reload interval then it is stored`() = runTest {
         createViewModel()
 
-        viewModel.onAutoReloadChanged(KioskAutoReloadInterval.MINUTES_15)
+        viewModel.onDisplaySettingChanged(KioskDisplaySetting.AutoReload(KioskAutoReloadInterval.MINUTES_15))
         advanceUntilIdle()
 
         assertEquals(KioskAutoReloadInterval.MINUTES_15, repository.getSettings().autoReload)
@@ -158,7 +164,7 @@ class KioskSettingsViewModelTest {
     fun `Given the user keeps the screen on then it is stored`() = runTest {
         createViewModel()
 
-        viewModel.onKeepScreenOnChanged(true)
+        viewModel.onDisplaySettingChanged(KioskDisplaySetting.KeepScreenOn(true))
         advanceUntilIdle()
 
         assertTrue(repository.getSettings().keepScreenOn)
@@ -167,9 +173,9 @@ class KioskSettingsViewModelTest {
     @Test
     fun `Given the user hides both system bars then both are stored`() = runTest {
         createViewModel()
-        viewModel.onHideStatusBarChanged(true)
+        viewModel.onDisplaySettingChanged(KioskDisplaySetting.HideStatusBar(true))
         advanceUntilIdle()
-        viewModel.onHideNavigationBarChanged(true)
+        viewModel.onDisplaySettingChanged(KioskDisplaySetting.HideNavigationBar(true))
         advanceUntilIdle()
 
         val stored = repository.getSettings()
@@ -180,7 +186,7 @@ class KioskSettingsViewModelTest {
     @Test
     fun `Given the user picks a fixed brightness then it is stored as that percentage`() = runTest {
         createViewModel()
-        viewModel.onBrightnessChanged(KioskBrightnessOption.Fixed(40))
+        viewModel.onDisplaySettingChanged(KioskDisplaySetting.Brightness(KioskBrightnessOption.Fixed(40)))
         advanceUntilIdle()
 
         assertEquals(KioskBrightness.fromPercent(40), repository.getSettings().brightness)
@@ -191,7 +197,7 @@ class KioskSettingsViewModelTest {
         repository.setSettings(KioskSettings(brightness = KioskBrightness.fromPercent(40)))
         createViewModel()
 
-        viewModel.onBrightnessChanged(KioskBrightnessOption.SystemAdjusted)
+        viewModel.onDisplaySettingChanged(KioskDisplaySetting.Brightness(KioskBrightnessOption.SystemAdjusted))
         advanceUntilIdle()
 
         assertNull(repository.getSettings().brightness)
@@ -219,7 +225,7 @@ class KioskSettingsViewModelTest {
         )
         createViewModel()
 
-        viewModel.onHideNavigationBarChanged(true)
+        viewModel.onDisplaySettingChanged(KioskDisplaySetting.HideNavigationBar(true))
         advanceUntilIdle()
 
         val stored = repository.getSettings()

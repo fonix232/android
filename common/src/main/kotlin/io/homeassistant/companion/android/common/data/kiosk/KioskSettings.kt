@@ -125,6 +125,20 @@ data class KioskSettings(
     val enabled: Boolean = false,
 
     /**
+     * The server whose dashboard this kiosk shows, or null to follow whichever server is active.
+     *
+     * A wall display is usually pinned to one server even on a phone that switches between
+     * several, which is why it is stored here rather than read from the active server.
+     */
+    val serverId: Int? = null,
+
+    /**
+     * The dashboard path this kiosk returns to, such as `lovelace/wall`, or null for the server's
+     * default dashboard.
+     */
+    val dashboardPath: String? = null,
+
+    /**
      * Whether the kiosk settings ask for the device's lock credential before they can be read.
      *
      * A kiosk usually hangs on a wall where anyone can reach it, so this is what stops a passer-by

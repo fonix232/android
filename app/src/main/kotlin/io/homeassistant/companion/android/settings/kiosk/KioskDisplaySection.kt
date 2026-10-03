@@ -26,11 +26,7 @@ internal fun DisplaySection(
     hideStatusBar: Boolean,
     hideNavigationBar: Boolean,
     brightness: KioskBrightnessOption,
-    onAutoReloadChanged: (KioskAutoReloadInterval) -> Unit,
-    onKeepScreenOnChanged: (Boolean) -> Unit,
-    onHideStatusBarChanged: (Boolean) -> Unit,
-    onHideNavigationBarChanged: (Boolean) -> Unit,
-    onBrightnessChanged: (KioskBrightnessOption) -> Unit,
+    onDisplaySettingChanged: (KioskDisplaySetting) -> Unit,
 ) {
     SectionHeader(stringResource(commonR.string.kiosk_display_title))
 
@@ -40,22 +36,28 @@ internal fun DisplaySection(
                 title = stringResource(commonR.string.kiosk_keep_screen_on),
                 subtitle = null,
                 checked = keepScreenOn,
-                onCheckedChange = onKeepScreenOnChanged,
+                onCheckedChange = { onDisplaySettingChanged(KioskDisplaySetting.KeepScreenOn(it)) },
             )
             SwitchRow(
                 title = stringResource(commonR.string.kiosk_hide_status_bar),
                 subtitle = null,
                 checked = hideStatusBar,
-                onCheckedChange = onHideStatusBarChanged,
+                onCheckedChange = { onDisplaySettingChanged(KioskDisplaySetting.HideStatusBar(it)) },
             )
             SwitchRow(
                 title = stringResource(commonR.string.kiosk_hide_navigation_bar),
                 subtitle = null,
                 checked = hideNavigationBar,
-                onCheckedChange = onHideNavigationBarChanged,
+                onCheckedChange = { onDisplaySettingChanged(KioskDisplaySetting.HideNavigationBar(it)) },
             )
-            BrightnessRow(selected = brightness, onBrightnessChanged = onBrightnessChanged)
-            AutoReloadRow(selected = autoReload, onAutoReloadChanged = onAutoReloadChanged)
+            BrightnessRow(
+                selected = brightness,
+                onBrightnessChanged = { onDisplaySettingChanged(KioskDisplaySetting.Brightness(it)) },
+            )
+            AutoReloadRow(
+                selected = autoReload,
+                onAutoReloadChanged = { onDisplaySettingChanged(KioskDisplaySetting.AutoReload(it)) },
+            )
         }
     }
 
