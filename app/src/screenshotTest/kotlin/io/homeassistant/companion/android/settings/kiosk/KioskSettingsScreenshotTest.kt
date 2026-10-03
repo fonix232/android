@@ -18,6 +18,7 @@ class KioskSettingsScreenshotTest {
                 onHideStatusBarChanged = {},
                 onHideNavigationBarChanged = {},
                 onBrightnessChanged = {},
+                onScreensaverClick = {},
             )
         }
     }
@@ -38,6 +39,7 @@ class KioskSettingsScreenshotTest {
                 onHideStatusBarChanged = {},
                 onHideNavigationBarChanged = {},
                 onBrightnessChanged = {},
+                onScreensaverClick = {},
             )
         }
     }

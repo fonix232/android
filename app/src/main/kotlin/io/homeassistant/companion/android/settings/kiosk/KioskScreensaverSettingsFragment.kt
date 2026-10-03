@@ -6,26 +6,21 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import dagger.hilt.android.AndroidEntryPoint
-import io.homeassistant.companion.android.R
 import io.homeassistant.companion.android.common.R as commonR
 import io.homeassistant.companion.android.common.compose.theme.HATheme
 
 @AndroidEntryPoint
-class KioskSettingsFragment : Fragment() {
+class KioskScreensaverSettingsFragment : Fragment() {
 
-    private val viewModel: KioskSettingsViewModel by viewModels()
+    private val viewModel: KioskScreensaverSettingsViewModel by viewModels()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         return ComposeView(requireContext()).apply {
             setContent {
                 HATheme {
-                    KioskSettingsScreen(
-                        viewModel = viewModel,
-                        onScreensaverClick = ::openScreensaverSettings,
-                    )
+                    KioskScreensaverSettingsScreen(viewModel = viewModel)
                 }
             }
         }
@@ -33,13 +28,6 @@ class KioskSettingsFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        activity?.title = getString(commonR.string.kiosk_title)
-    }
-
-    private fun openScreensaverSettings() {
-        parentFragmentManager.commit {
-            replace(R.id.content, KioskScreensaverSettingsFragment::class.java, null)
-            addToBackStack(getString(commonR.string.kiosk_screensaver_title))
-        }
+        activity?.title = getString(commonR.string.kiosk_screensaver_title)
     }
 }

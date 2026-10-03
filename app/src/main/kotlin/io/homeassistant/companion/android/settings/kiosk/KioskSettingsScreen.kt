@@ -42,7 +42,11 @@ private val BRIGHTNESS_PERCENT_CHOICES = listOf(10, 20, 30, 40, 50, 60, 70, 80, 
 private const val PREVIEW_BRIGHTNESS_PERCENT = 40
 
 @Composable
-internal fun KioskSettingsScreen(viewModel: KioskSettingsViewModel, modifier: Modifier = Modifier) {
+internal fun KioskSettingsScreen(
+    viewModel: KioskSettingsViewModel,
+    onScreensaverClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val viewState by viewModel.viewState.collectAsStateWithLifecycle()
 
     KioskSettingsContent(
@@ -51,6 +55,7 @@ internal fun KioskSettingsScreen(viewModel: KioskSettingsViewModel, modifier: Mo
         onHideStatusBarChanged = viewModel::onHideStatusBarChanged,
         onHideNavigationBarChanged = viewModel::onHideNavigationBarChanged,
         onBrightnessChanged = viewModel::onBrightnessChanged,
+        onScreensaverClick = onScreensaverClick,
         modifier = modifier,
     )
 }
@@ -63,6 +68,7 @@ internal fun KioskSettingsContent(
     onHideStatusBarChanged: (Boolean) -> Unit,
     onHideNavigationBarChanged: (Boolean) -> Unit,
     onBrightnessChanged: (KioskBrightnessOption) -> Unit,
+    onScreensaverClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -102,6 +108,36 @@ internal fun KioskSettingsContent(
         }
 
         FooterText(stringResource(commonR.string.kiosk_display_footer))
+
+        HASettingsCard {
+            NavigationRow(
+                title = stringResource(commonR.string.kiosk_screensaver_title),
+                subtitle = stringResource(commonR.string.kiosk_screensaver_summary),
+                onClick = onScreensaverClick,
+            )
+        }
+    }
+}
+
+/** A row that opens another settings screen. */
+@Composable
+private fun NavigationRow(title: String, subtitle: String, onClick: () -> Unit) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(HADimens.SPACE1),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick),
+    ) {
+        Text(
+            text = title,
+            style = HATextStyle.Body.copy(textAlign = TextAlign.Start),
+            color = LocalHAColorScheme.current.colorTextPrimary,
+        )
+        Text(
+            text = subtitle,
+            style = HATextStyle.BodyMedium.copy(textAlign = TextAlign.Start),
+            color = LocalHAColorScheme.current.colorTextSecondary,
+        )
     }
 }
 
@@ -210,6 +246,7 @@ private fun KioskSettingsContentPreview() {
             onHideStatusBarChanged = {},
             onHideNavigationBarChanged = {},
             onBrightnessChanged = {},
+            onScreensaverClick = {},
         )
     }
 }
