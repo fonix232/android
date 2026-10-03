@@ -27,7 +27,7 @@ val threadPolicyIgnoredViolationRules = listOf(
     IgnoreMiuiFontSettingsDiskRead,
     IgnoreMiuiTurboSchedMonitorDiskRead,
     IgnoreChromiumKeyStoreDiskWrite,
-    IgnoreAppCompatPersistLocalesDiskReadWrite,
+    IgnoreAppCompatSyncLocalesDiskReadWrite,
 )
 
 /**
@@ -282,21 +282,27 @@ private data object IgnoreMiuiTurboSchedMonitorDiskRead : IgnoreViolationRule {
  *
  * On every cold activity start, [androidx.appcompat.app.AppCompatDelegateImpl.attachBaseContext2]
  * synchronously calls [androidx.appcompat.app.AppCompatDelegate.syncRequestedAndStoredLocales],
- * which deletes (or writes) the persisted locales file via
- * [androidx.core.app.AppLocalesStorageHelper.persistLocales] on the main thread. The delete itself
- * is the [DiskWriteViolation]; the [DiskReadViolation] comes from the framework's
- * `Context.deleteFile` first probing `filesDir` to ensure it exists. The app opts in to this
- * storage via the `AppLocalesMetadataHolderService` manifest entry, so both violations are
- * intrinsic to the library and beyond application control.
+ * which touches the persisted locales file on the main thread.
+ *
+ * Which call it makes depends on whether that file exists. With no file it writes or deletes one
+ * through [androidx.core.app.AppLocalesStorageHelper.persistLocales]: the delete is the
+ * [DiskWriteViolation], and the [DiskReadViolation] comes from the framework's `Context.deleteFile`
+ * first probing `filesDir`. Once a file exists it instead reads it back through
+ * [androidx.core.app.AppLocalesStorageHelper.readLocales], whose `Context.openFileInput` probes
+ * `filesDir` the same way — a [DiskReadViolation] on every launch from then on, which is fatal
+ * because the thread policy fails fast.
+ *
+ * The app opts in to this storage via the `AppLocalesMetadataHolderService` manifest entry, so
+ * every one of these is intrinsic to the library and beyond application control.
  */
-private data object IgnoreAppCompatPersistLocalesDiskReadWrite : IgnoreViolationRule {
+private data object IgnoreAppCompatSyncLocalesDiskReadWrite : IgnoreViolationRule {
     @RequiresApi(Build.VERSION_CODES.P)
     override fun shouldIgnore(violation: Violation): Boolean {
         if (violation !is DiskWriteViolation && violation !is DiskReadViolation) return false
 
         return violation.stackTrace.any {
             it.className == "androidx.core.app.AppLocalesStorageHelper" &&
-                it.methodName == "persistLocales"
+                (it.methodName == "persistLocales" || it.methodName == "readLocales")
         } &&
             violation.stackTrace.any {
                 it.className == "androidx.appcompat.app.AppCompatDelegate" &&
