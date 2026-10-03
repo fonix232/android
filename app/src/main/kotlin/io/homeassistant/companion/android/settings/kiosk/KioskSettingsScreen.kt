@@ -99,23 +99,12 @@ internal fun KioskSettingsContent(
             .padding(PaddingValues(all = HADimens.SPACE4) + safeBottomPaddingValues(applyHorizontal = false)),
         verticalArrangement = Arrangement.spacedBy(HADimens.SPACE4),
     ) {
-        HASettingsCard {
-            SwitchRow(
-                title = stringResource(commonR.string.kiosk_enabled),
-                subtitle = stringResource(commonR.string.kiosk_enabled_summary),
-                checked = viewState.enabled,
-                onCheckedChange = onEnabledChanged,
-            )
-        }
-
-        HASettingsCard {
-            SwitchRow(
-                title = stringResource(commonR.string.kiosk_require_authentication),
-                subtitle = stringResource(commonR.string.kiosk_require_authentication_summary),
-                checked = viewState.requireAuthentication,
-                onCheckedChange = onRequireAuthenticationChanged,
-            )
-        }
+        KioskModeCards(
+            enabled = viewState.enabled,
+            requireAuthentication = viewState.requireAuthentication,
+            onEnabledChanged = onEnabledChanged,
+            onRequireAuthenticationChanged = onRequireAuthenticationChanged,
+        )
 
         DashboardSection(
             servers = viewState.servers,
@@ -148,13 +137,46 @@ internal fun KioskSettingsContent(
             onDisplaySettingChanged = onDisplaySettingChanged,
         )
 
-        HASettingsCard {
-            NavigationRow(
-                title = stringResource(commonR.string.kiosk_screensaver_title),
-                subtitle = stringResource(commonR.string.kiosk_screensaver_summary),
-                onClick = onScreensaverClick,
-            )
-        }
+        ScreensaverCard(onClick = onScreensaverClick)
+    }
+}
+
+/** The two switches the rest of this screen depends on: kiosk mode itself, and locking its settings. */
+@Composable
+private fun KioskModeCards(
+    enabled: Boolean,
+    requireAuthentication: Boolean,
+    onEnabledChanged: (Boolean) -> Unit,
+    onRequireAuthenticationChanged: (Boolean) -> Unit,
+) {
+    HASettingsCard {
+        SwitchRow(
+            title = stringResource(commonR.string.kiosk_enabled),
+            subtitle = stringResource(commonR.string.kiosk_enabled_summary),
+            checked = enabled,
+            onCheckedChange = onEnabledChanged,
+        )
+    }
+
+    HASettingsCard {
+        SwitchRow(
+            title = stringResource(commonR.string.kiosk_require_authentication),
+            subtitle = stringResource(commonR.string.kiosk_require_authentication_summary),
+            checked = requireAuthentication,
+            onCheckedChange = onRequireAuthenticationChanged,
+        )
+    }
+}
+
+/** The card that leads to the screensaver's own settings screen. */
+@Composable
+private fun ScreensaverCard(onClick: () -> Unit) {
+    HASettingsCard {
+        NavigationRow(
+            title = stringResource(commonR.string.kiosk_screensaver_title),
+            subtitle = stringResource(commonR.string.kiosk_screensaver_summary),
+            onClick = onClick,
+        )
     }
 }
 
