@@ -44,6 +44,14 @@ internal sealed interface KioskState {
      */
     val soundWakeThreshold: KioskSoundThreshold?
 
+    /**
+     * Whether movement seen by the camera counts as somebody being there.
+     *
+     * False whenever kiosk mode is off, no screensaver is configured, or the user has not turned
+     * camera waking on, so a consumer that sees true is always one that should be watching.
+     */
+    val wakesOnCameraMotion: Boolean
+
     /** Kiosk mode is off: nothing is hidden, and the display is left to the system and the user. */
     data object Inactive : KioskState {
         override val settingsEntry: KioskSettingsEntry? = null
@@ -54,6 +62,7 @@ internal sealed interface KioskState {
         override val forcedBrightness: KioskBrightness? = null
         override val screensaver: KioskScreensaver? = null
         override val soundWakeThreshold: KioskSoundThreshold? = null
+        override val wakesOnCameraMotion: Boolean = false
     }
 
     /** Kiosk mode is on, and every value here applies to the display right now. */
@@ -66,6 +75,7 @@ internal sealed interface KioskState {
         override val forcedBrightness: KioskBrightness?,
         override val screensaver: KioskScreensaver?,
         override val soundWakeThreshold: KioskSoundThreshold?,
+        override val wakesOnCameraMotion: Boolean,
     ) : KioskState
 }
 

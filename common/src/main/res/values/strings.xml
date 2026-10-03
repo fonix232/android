@@ -1595,6 +1595,9 @@
     <string name="kiosk_sound_wake_footer">The screensaver goes away when this device hears a sound above the line. Drag the line to just below the level you see when someone speaks. While this is on, Android shows a microphone indicator and the microphone is used only while this screen is in front.</string>
     <string name="kiosk_sound_wake_threshold_value">Wakes above %1$d dB</string>
     <string name="kiosk_sound_wake_level_value">Now %1$d dB</string>
+    <string name="kiosk_camera_wake_title">Wake on movement</string>
+    <string name="kiosk_camera_wake">Wake when it sees movement</string>
+    <string name="kiosk_camera_wake_footer">The screensaver goes away when the front camera sees movement in front of the device. Frames are compared on this device and thrown away: nothing is recorded, saved or sent anywhere. While this is on, Android shows a camera indicator and the camera is used only while this screen is in front.</string>
     <string name="kiosk_screensaver_footer">The screensaver covers the dashboard once the device has been idle for this long. Any touch brings the dashboard back.</string>
     <string name="kiosk_screensaver_clock_description">Screensaver showing %1$s on %2$s. Touch to return to the dashboard.</string>
     <string name="kiosk_screensaver_blank_description">Screensaver. Touch to return to the dashboard.</string>

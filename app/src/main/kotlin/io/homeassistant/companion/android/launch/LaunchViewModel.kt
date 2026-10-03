@@ -214,6 +214,10 @@ internal class LaunchViewModel @VisibleForTesting constructor(
             // Same lifetime, which is what keeps the microphone tied to the foreground.
             screensaverManager.observeSoundWake()
         }
+        viewModelScope.launch {
+            // And the camera, for the same reason.
+            screensaverManager.observeCameraMotionWake()
+        }
     }
 
     /** Reports that the user is interacting with the app, which keeps the screensaver away. */

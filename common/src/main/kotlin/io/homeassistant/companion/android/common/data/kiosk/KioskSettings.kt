@@ -228,6 +228,15 @@ data class KioskSettings(
     /** How loud a sound has to be before [wakeOnSound] treats it as somebody being there. */
     val soundWakeThreshold: KioskSoundThreshold = KioskSoundThreshold.DEFAULT,
 
+    /**
+     * Whether movement seen by the front camera counts as somebody being there.
+     *
+     * Off by default, and nothing opens the camera until the user turns it on: a camera is not
+     * something to start using on a device's behalf. Frames are compared on the device and
+     * discarded; nothing is recorded or sent anywhere.
+     */
+    val wakeOnCameraMotion: Boolean = false,
+
     val screensaverMode: KioskScreensaverMode = KioskScreensaverMode.DISABLED,
 
     /**

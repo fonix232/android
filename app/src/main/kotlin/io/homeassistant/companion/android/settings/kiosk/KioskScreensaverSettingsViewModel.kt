@@ -39,6 +39,7 @@ internal data class KioskScreensaverSettingsViewState(
     val idleTimeout: Duration = KioskSettings.DEFAULT_SCREENSAVER_IDLE_TIMEOUT,
     val wakeOnSound: Boolean = false,
     val soundWakeThreshold: KioskSoundThreshold = KioskSoundThreshold.DEFAULT,
+    val wakeOnCameraMotion: Boolean = false,
 ) {
     /** The idle timeout only matters once a screensaver is chosen. */
     val isTimeoutRelevant: Boolean
@@ -59,6 +60,7 @@ internal class KioskScreensaverSettingsViewModel @Inject constructor(
                 idleTimeout = it.screensaverIdleTimeout,
                 wakeOnSound = it.wakeOnSound,
                 soundWakeThreshold = it.soundWakeThreshold,
+                wakeOnCameraMotion = it.wakeOnCameraMotion,
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), KioskScreensaverSettingsViewState())
@@ -87,6 +89,9 @@ internal class KioskScreensaverSettingsViewModel @Inject constructor(
     fun onSoundWakeThresholdChanged(meterPosition: Float) = update {
         it.copy(soundWakeThreshold = KioskSoundThreshold.ofMeterPosition(meterPosition))
     }
+
+    /** Chooses whether movement in front of the camera counts as somebody being there. */
+    fun onWakeOnCameraMotionChanged(wake: Boolean) = update { it.copy(wakeOnCameraMotion = wake) }
 
     /** Chooses what the screensaver shows, or turns it off. */
     fun onModeChanged(mode: KioskScreensaverMode) = update { it.copy(screensaverMode = mode) }

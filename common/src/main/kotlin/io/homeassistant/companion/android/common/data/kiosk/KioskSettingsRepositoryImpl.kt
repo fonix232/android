@@ -23,6 +23,7 @@ private const val PREF_KIOSK_BRIGHTNESS_PERCENT = "kiosk_brightness_percent"
 private const val PREF_KIOSK_AUTO_RELOAD = "kiosk_auto_reload"
 private const val PREF_KIOSK_WAKE_ON_SOUND = "kiosk_wake_on_sound"
 private const val PREF_KIOSK_SOUND_WAKE_THRESHOLD_DBFS = "kiosk_sound_wake_threshold_dbfs"
+private const val PREF_KIOSK_WAKE_ON_CAMERA_MOTION = "kiosk_wake_on_camera_motion"
 private const val PREF_KIOSK_SCREENSAVER_MODE = "kiosk_screensaver_mode"
 private const val PREF_KIOSK_SCREENSAVER_IDLE_TIMEOUT_SECONDS = "kiosk_screensaver_idle_timeout_seconds"
 
@@ -53,6 +54,7 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
         localStorage.putString(PREF_KIOSK_AUTO_RELOAD, settings.autoReload.storageValue)
         localStorage.putBoolean(PREF_KIOSK_WAKE_ON_SOUND, settings.wakeOnSound)
         localStorage.putInt(PREF_KIOSK_SOUND_WAKE_THRESHOLD_DBFS, settings.soundWakeThreshold.dbfs.toInt())
+        localStorage.putBoolean(PREF_KIOSK_WAKE_ON_CAMERA_MOTION, settings.wakeOnCameraMotion)
         localStorage.putString(PREF_KIOSK_SCREENSAVER_MODE, settings.screensaverMode.storageValue)
         localStorage.putLong(PREF_KIOSK_SCREENSAVER_IDLE_TIMEOUT_SECONDS, idleTimeout.inWholeSeconds)
     }
@@ -75,6 +77,7 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
                 PREF_KIOSK_AUTO_RELOAD,
                 PREF_KIOSK_WAKE_ON_SOUND,
                 PREF_KIOSK_SOUND_WAKE_THRESHOLD_DBFS,
+                PREF_KIOSK_WAKE_ON_CAMERA_MOTION,
                 PREF_KIOSK_SCREENSAVER_MODE,
                 PREF_KIOSK_SCREENSAVER_IDLE_TIMEOUT_SECONDS,
             ) { readSettings() },
@@ -108,6 +111,7 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
             soundWakeThreshold = localStorage.getInt(PREF_KIOSK_SOUND_WAKE_THRESHOLD_DBFS)
                 ?.let { KioskSoundThreshold.ofDbfs(it.toFloat()) }
                 ?: KioskSoundThreshold.DEFAULT,
+            wakeOnCameraMotion = localStorage.getBoolean(PREF_KIOSK_WAKE_ON_CAMERA_MOTION),
             screensaverMode = KioskScreensaverMode.fromStorageValue(
                 localStorage.getString(PREF_KIOSK_SCREENSAVER_MODE),
             ),
