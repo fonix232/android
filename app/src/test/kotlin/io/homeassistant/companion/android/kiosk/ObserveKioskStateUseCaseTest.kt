@@ -114,6 +114,7 @@ class ObserveKioskStateUseCaseTest {
 
             assertEquals(
                 KioskState.Active(
+                    autoReloadInterval = null,
                     keepsScreenOn = false,
                     hidesStatusBar = false,
                     hidesNavigationBar = false,

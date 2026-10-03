@@ -20,8 +20,8 @@ internal const val KIOSK_COMMAND_PREFIX = "kiosk_"
  * A kiosk command sent from Home Assistant as a notification message.
  *
  * Only the commands this app can currently serve are listed. The rest of the iOS set — showing and
- * hiding a camera, setting the volume, reloading, returning to the configured dashboard — arrives
- * with the features they act on.
+ * hiding a camera, setting the volume, returning to the configured dashboard — arrives with the
+ * features they act on.
  */
 sealed interface KioskPushCommand {
 
@@ -37,11 +37,15 @@ sealed interface KioskPushCommand {
     /** Uncovers the dashboard now, and restarts the idle countdown. */
     data object HideScreensaver : KioskPushCommand
 
+    /** Reloads the dashboard now. */
+    data object Reload : KioskPushCommand
+
     companion object {
         private const val SET_BRIGHTNESS = "${KIOSK_COMMAND_PREFIX}set_brightness"
         private const val SET_SCREENSAVER_MODE = "${KIOSK_COMMAND_PREFIX}set_screensaver_mode"
         private const val SHOW_SCREENSAVER = "${KIOSK_COMMAND_PREFIX}show_screensaver"
         private const val HIDE_SCREENSAVER = "${KIOSK_COMMAND_PREFIX}hide_screensaver"
+        private const val RELOAD = "${KIOSK_COMMAND_PREFIX}reload"
 
         /** Payload key holding the level for the commands that take one. */
         private const val KEY_LEVEL = "level"
@@ -70,6 +74,7 @@ sealed interface KioskPushCommand {
             SET_SCREENSAVER_MODE -> data.screensaverMode()?.let(::SetScreensaverMode)
             SHOW_SCREENSAVER -> ShowScreensaver
             HIDE_SCREENSAVER -> HideScreensaver
+            RELOAD -> Reload
             else -> null
         }
 

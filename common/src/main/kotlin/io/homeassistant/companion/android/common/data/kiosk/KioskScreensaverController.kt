@@ -16,6 +16,9 @@ sealed interface KioskScreensaverRequest {
 
     /** Uncover the dashboard now, and restart the idle countdown. */
     data object Hide : KioskScreensaverRequest
+
+    /** Reload the dashboard now. */
+    data object Reload : KioskScreensaverRequest
 }
 
 /**

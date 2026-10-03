@@ -9,14 +9,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.homeassistant.companion.android.common.R as commonR
@@ -24,9 +22,7 @@ import io.homeassistant.companion.android.common.compose.composable.HADropdownIt
 import io.homeassistant.companion.android.common.compose.composable.HADropdownMenu
 import io.homeassistant.companion.android.common.compose.composable.HASettingsCard
 import io.homeassistant.companion.android.common.compose.theme.HADimens
-import io.homeassistant.companion.android.common.compose.theme.HATextStyle
 import io.homeassistant.companion.android.common.compose.theme.HAThemeForPreview
-import io.homeassistant.companion.android.common.compose.theme.LocalHAColorScheme
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
 import io.homeassistant.companion.android.util.plus
 import io.homeassistant.companion.android.util.safeBottomPaddingValues
@@ -140,16 +136,6 @@ private fun android.content.Context.formatTimeout(timeout: Duration): String {
 }
 
 private const val MINUTES_PER_HOUR = 60
-
-@Composable
-private fun FooterText(text: String) {
-    Text(
-        text = text,
-        style = HATextStyle.BodyMedium.copy(textAlign = TextAlign.Start),
-        color = LocalHAColorScheme.current.colorTextSecondary,
-        modifier = Modifier.fillMaxWidth(),
-    )
-}
 
 @Preview
 @Composable

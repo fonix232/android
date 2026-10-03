@@ -16,6 +16,7 @@ private const val PREF_KIOSK_KEEP_SCREEN_ON = "kiosk_keep_screen_on"
 private const val PREF_KIOSK_HIDE_STATUS_BAR = "kiosk_hide_status_bar"
 private const val PREF_KIOSK_HIDE_NAVIGATION_BAR = "kiosk_hide_navigation_bar"
 private const val PREF_KIOSK_BRIGHTNESS_PERCENT = "kiosk_brightness_percent"
+private const val PREF_KIOSK_AUTO_RELOAD = "kiosk_auto_reload"
 private const val PREF_KIOSK_SCREENSAVER_MODE = "kiosk_screensaver_mode"
 private const val PREF_KIOSK_SCREENSAVER_IDLE_TIMEOUT_SECONDS = "kiosk_screensaver_idle_timeout_seconds"
 
@@ -39,6 +40,7 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
         localStorage.putBoolean(PREF_KIOSK_HIDE_STATUS_BAR, settings.hideStatusBar)
         localStorage.putBoolean(PREF_KIOSK_HIDE_NAVIGATION_BAR, settings.hideNavigationBar)
         localStorage.putInt(PREF_KIOSK_BRIGHTNESS_PERCENT, settings.brightness?.toPercent())
+        localStorage.putString(PREF_KIOSK_AUTO_RELOAD, settings.autoReload.storageValue)
         localStorage.putString(PREF_KIOSK_SCREENSAVER_MODE, settings.screensaverMode.storageValue)
         localStorage.putLong(PREF_KIOSK_SCREENSAVER_IDLE_TIMEOUT_SECONDS, idleTimeout.inWholeSeconds)
     }
@@ -54,6 +56,7 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
                 PREF_KIOSK_HIDE_STATUS_BAR,
                 PREF_KIOSK_HIDE_NAVIGATION_BAR,
                 PREF_KIOSK_BRIGHTNESS_PERCENT,
+                PREF_KIOSK_AUTO_RELOAD,
                 PREF_KIOSK_SCREENSAVER_MODE,
                 PREF_KIOSK_SCREENSAVER_IDLE_TIMEOUT_SECONDS,
             ) { readSettings() },
@@ -75,6 +78,7 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
             hideStatusBar = localStorage.getBoolean(PREF_KIOSK_HIDE_STATUS_BAR),
             hideNavigationBar = localStorage.getBoolean(PREF_KIOSK_HIDE_NAVIGATION_BAR),
             brightness = KioskBrightness.fromPercent(localStorage.getInt(PREF_KIOSK_BRIGHTNESS_PERCENT)),
+            autoReload = KioskAutoReloadInterval.fromStorageValue(localStorage.getString(PREF_KIOSK_AUTO_RELOAD)),
             screensaverMode = KioskScreensaverMode.fromStorageValue(
                 localStorage.getString(PREF_KIOSK_SCREENSAVER_MODE),
             ),

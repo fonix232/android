@@ -1,6 +1,7 @@
 package io.homeassistant.companion.android.common.data.kiosk
 
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -39,6 +40,29 @@ value class KioskBrightness private constructor(val value: Float) {
      * equal. Compare through this function when either side may have come from storage.
      */
     fun toPercent(): Int = (value * PERCENT_SCALE).toInt()
+}
+
+/**
+ * How often kiosk mode reloads the dashboard on its own.
+ *
+ * A wall display is left running for weeks, long enough for a frontend to end up wedged on a stale
+ * page or a dead websocket. Reloading on a schedule gets it back without anyone walking over to it.
+ */
+enum class KioskAutoReloadInterval(val storageValue: String, val interval: Duration?) {
+    /** No scheduled reload; the dashboard is only reloaded when something asks for it. */
+    NEVER("never", null),
+
+    MINUTES_10("minutes10", 10.minutes),
+    MINUTES_15("minutes15", 15.minutes),
+    MINUTES_30("minutes30", 30.minutes),
+    HOURS_1("hours1", 1.hours),
+    ;
+
+    companion object {
+        /** Returns the matching entry, or [NEVER] when [value] is null or unknown. */
+        fun fromStorageValue(value: String?): KioskAutoReloadInterval =
+            entries.firstOrNull { it.storageValue == value } ?: NEVER
+    }
 }
 
 /**
@@ -116,6 +140,9 @@ data class KioskSettings(
      * including its automatic adjustment.
      */
     val brightness: KioskBrightness? = null,
+
+    /** How often the dashboard reloads on its own. */
+    val autoReload: KioskAutoReloadInterval = KioskAutoReloadInterval.NEVER,
 
     val screensaverMode: KioskScreensaverMode = KioskScreensaverMode.DISABLED,
 

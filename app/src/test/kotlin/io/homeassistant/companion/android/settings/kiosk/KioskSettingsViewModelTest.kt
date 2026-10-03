@@ -1,6 +1,7 @@
 package io.homeassistant.companion.android.settings.kiosk
 
 import app.cash.turbine.test
+import io.homeassistant.companion.android.common.data.kiosk.KioskAutoReloadInterval
 import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.kiosk.FakeKioskSettingsRepository
@@ -141,6 +142,16 @@ class KioskSettingsViewModelTest {
         advanceUntilIdle()
 
         assertTrue(repository.getSettings().requireAuthentication)
+    }
+
+    @Test
+    fun `Given the user picks a reload interval then it is stored`() = runTest {
+        createViewModel()
+
+        viewModel.onAutoReloadChanged(KioskAutoReloadInterval.MINUTES_15)
+        advanceUntilIdle()
+
+        assertEquals(KioskAutoReloadInterval.MINUTES_15, repository.getSettings().autoReload)
     }
 
     @Test

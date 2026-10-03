@@ -15,6 +15,8 @@ import io.homeassistant.companion.android.common.R as commonR
 import io.homeassistant.companion.android.common.data.connectivity.ConnectivityCheckRepository
 import io.homeassistant.companion.android.common.data.connectivity.ConnectivityCheckState
 import io.homeassistant.companion.android.common.data.keychain.KeyChainRepository
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverController
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverRequest
 import io.homeassistant.companion.android.common.data.prefs.PrefsRepository
 import io.homeassistant.companion.android.common.data.prefs.ScreenOrientation
 import io.homeassistant.companion.android.common.data.servers.ServerManager
@@ -77,7 +79,10 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
@@ -135,6 +140,7 @@ internal class FrontendViewModel @VisibleForTesting constructor(
     private val barcodeScannerHandler: FrontendBarcodeScannerHandler,
     private val matterThreadHandler: FrontendMatterThreadHandler,
     private val keyChainRepository: KeyChainRepository,
+    private val screensaverController: KioskScreensaverController,
     observeKioskState: ObserveKioskStateUseCase,
 ) : ViewModel(),
     FrontendConnectionErrorStateProvider {
@@ -161,6 +167,7 @@ internal class FrontendViewModel @VisibleForTesting constructor(
         barcodeScannerHandler: FrontendBarcodeScannerHandler,
         matterThreadHandler: FrontendMatterThreadHandler,
         keyChainRepository: KeyChainRepository,
+        screensaverController: KioskScreensaverController,
         observeKioskState: ObserveKioskStateUseCase,
     ) : this(
         initialServerId = savedStateHandle.toRoute<FrontendRoute>().serverId,
@@ -184,6 +191,7 @@ internal class FrontendViewModel @VisibleForTesting constructor(
         barcodeScannerHandler = barcodeScannerHandler,
         matterThreadHandler = matterThreadHandler,
         keyChainRepository = keyChainRepository,
+        screensaverController = screensaverController,
         observeKioskState = observeKioskState,
     )
 
@@ -409,6 +417,33 @@ internal class FrontendViewModel @VisibleForTesting constructor(
      * WebView is active. Exposed as a [StateFlow] so the screen can read the current value
      * synchronously when first attaching to the window and react to subsequent changes.
      */
+    /**
+     * Reloads the dashboard on the configured interval, and whenever a server asks for it.
+     *
+     * The timer restarts whenever the interval changes, so shortening it takes effect at once
+     * rather than after the previous, longer wait.
+     */
+    private val autoReload: Flow<Unit> = merge(
+        observeKioskState()
+            .map { it.autoReloadInterval }
+            .distinctUntilChanged()
+            .flatMapLatest { interval ->
+                if (interval == null) {
+                    emptyFlow()
+                } else {
+                    flow {
+                        while (true) {
+                            delay(interval)
+                            emit(Unit)
+                        }
+                    }
+                }
+            },
+        screensaverController.requests
+            .filter { it == KioskScreensaverRequest.Reload }
+            .map { },
+    )
+
     val keepScreenOnEnabled: StateFlow<Boolean> = combine(
         flow { emitAll(prefsRepository.keepScreenOnFlow()) },
         observeKioskState(),
@@ -427,6 +462,13 @@ internal class FrontendViewModel @VisibleForTesting constructor(
     val improvScanRequested: StateFlow<Boolean> = improvHandler.scanRequested
 
     init {
+        viewModelScope.launch {
+            autoReload.collect {
+                Timber.d("Reloading the dashboard for kiosk mode")
+                _webViewActions.emit(WebViewAction.Reload())
+            }
+        }
+
         viewModelScope.launch {
             _viewState.collect { state ->
                 Timber.d("Frontend state: ${state.logDescription()}")

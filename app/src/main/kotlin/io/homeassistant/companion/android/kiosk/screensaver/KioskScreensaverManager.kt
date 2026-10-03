@@ -87,6 +87,8 @@ internal class KioskScreensaverManager @Inject constructor(
             when (request) {
                 KioskScreensaverRequest.Show -> idleInput.value = idleInput.value.copy(requested = true)
                 KioskScreensaverRequest.Hide -> onUserInteraction()
+                // Reloading the dashboard is the frontend's to honor, not the screensaver's.
+                KioskScreensaverRequest.Reload -> Unit
             }
         }
     }

@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -15,32 +14,25 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.homeassistant.companion.android.common.R as commonR
-import io.homeassistant.companion.android.common.compose.composable.HADropdownItem
-import io.homeassistant.companion.android.common.compose.composable.HADropdownMenu
 import io.homeassistant.companion.android.common.compose.composable.HAFilledButton
 import io.homeassistant.companion.android.common.compose.composable.HALoading
 import io.homeassistant.companion.android.common.compose.composable.HASettingsCard
-import io.homeassistant.companion.android.common.compose.composable.HASwitch
 import io.homeassistant.companion.android.common.compose.theme.HADimens
 import io.homeassistant.companion.android.common.compose.theme.HATextStyle
 import io.homeassistant.companion.android.common.compose.theme.HAThemeForPreview
 import io.homeassistant.companion.android.common.compose.theme.LocalHAColorScheme
+import io.homeassistant.companion.android.common.data.kiosk.KioskAutoReloadInterval
 import io.homeassistant.companion.android.util.plus
 import io.homeassistant.companion.android.util.safeBottomPaddingValues
 import org.jetbrains.annotations.VisibleForTesting
-
-/** Fixed brightness levels offered, as whole percentages. */
-private val BRIGHTNESS_PERCENT_CHOICES = listOf(10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
 
 /** A mid-range brightness, so the preview shows the picker holding a value rather than its default. */
 private const val PREVIEW_BRIGHTNESS_PERCENT = 40
@@ -74,6 +66,7 @@ internal fun KioskSettingsScreen(
         onRequireAuthenticationChanged = viewModel::onRequireAuthenticationChanged,
         onAcceptRemoteCommandsChanged = viewModel::onAcceptRemoteCommandsChanged,
         onShowRemoteCommandConfirmationsChanged = viewModel::onShowRemoteCommandConfirmationsChanged,
+        onAutoReloadChanged = viewModel::onAutoReloadChanged,
         onKeepScreenOnChanged = viewModel::onKeepScreenOnChanged,
         onHideStatusBarChanged = viewModel::onHideStatusBarChanged,
         onHideNavigationBarChanged = viewModel::onHideNavigationBarChanged,
@@ -91,6 +84,7 @@ internal fun KioskSettingsContent(
     onRequireAuthenticationChanged: (Boolean) -> Unit,
     onAcceptRemoteCommandsChanged: (Boolean) -> Unit,
     onShowRemoteCommandConfirmationsChanged: (Boolean) -> Unit,
+    onAutoReloadChanged: (KioskAutoReloadInterval) -> Unit,
     onKeepScreenOnChanged: (Boolean) -> Unit,
     onHideStatusBarChanged: (Boolean) -> Unit,
     onHideNavigationBarChanged: (Boolean) -> Unit,
@@ -131,10 +125,12 @@ internal fun KioskSettingsContent(
         )
 
         DisplaySection(
+            autoReload = viewState.autoReload,
             keepScreenOn = viewState.keepScreenOn,
             hideStatusBar = viewState.hideStatusBar,
             hideNavigationBar = viewState.hideNavigationBar,
             brightness = viewState.brightness,
+            onAutoReloadChanged = onAutoReloadChanged,
             onKeepScreenOnChanged = onKeepScreenOnChanged,
             onHideStatusBarChanged = onHideStatusBarChanged,
             onHideNavigationBarChanged = onHideNavigationBarChanged,
@@ -208,52 +204,6 @@ private fun RemoteCommandsSection(
 }
 
 @Composable
-private fun DisplaySection(
-    keepScreenOn: Boolean,
-    hideStatusBar: Boolean,
-    hideNavigationBar: Boolean,
-    brightness: KioskBrightnessOption,
-    onKeepScreenOnChanged: (Boolean) -> Unit,
-    onHideStatusBarChanged: (Boolean) -> Unit,
-    onHideNavigationBarChanged: (Boolean) -> Unit,
-    onBrightnessChanged: (KioskBrightnessOption) -> Unit,
-) {
-    SectionHeader(stringResource(commonR.string.kiosk_display_title))
-
-    HASettingsCard {
-        Column(verticalArrangement = Arrangement.spacedBy(HADimens.SPACE4)) {
-            SwitchRow(
-                title = stringResource(commonR.string.kiosk_keep_screen_on),
-                subtitle = null,
-                checked = keepScreenOn,
-                onCheckedChange = onKeepScreenOnChanged,
-            )
-            SwitchRow(
-                title = stringResource(commonR.string.kiosk_hide_status_bar),
-                subtitle = null,
-                checked = hideStatusBar,
-                onCheckedChange = onHideStatusBarChanged,
-            )
-            SwitchRow(
-                title = stringResource(commonR.string.kiosk_hide_navigation_bar),
-                subtitle = null,
-                checked = hideNavigationBar,
-                onCheckedChange = onHideNavigationBarChanged,
-            )
-            BrightnessRow(selected = brightness, onBrightnessChanged = onBrightnessChanged)
-        }
-    }
-
-    FooterText(stringResource(commonR.string.kiosk_display_footer))
-}
-
-/**
- * Shown in place of the settings while they are protected and not yet unlocked.
- *
- * It replaces the content rather than covering it, so a protected setting is never briefly on
- * screen behind an overlay.
- */
-@Composable
 private fun KioskSettingsLocked(onUnlockClick: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
@@ -274,97 +224,7 @@ private fun KioskSettingsLocked(onUnlockClick: () -> Unit, modifier: Modifier = 
     }
 }
 
-/**
- * The brightness picker.
- *
- * A dropdown of fixed levels rather than a slider: the design system has no `HASlider`, and
- * introducing one belongs in its own change rather than being styled inline here.
- */
-@Composable
-private fun BrightnessRow(selected: KioskBrightnessOption, onBrightnessChanged: (KioskBrightnessOption) -> Unit) {
-    val context = LocalContext.current
-    val items = remember(context) {
-        buildList {
-            add(
-                HADropdownItem<KioskBrightnessOption>(
-                    key = KioskBrightnessOption.SystemAdjusted,
-                    label = context.getString(commonR.string.kiosk_brightness_system),
-                ),
-            )
-            BRIGHTNESS_PERCENT_CHOICES.forEach { percent ->
-                add(
-                    HADropdownItem<KioskBrightnessOption>(
-                        key = KioskBrightnessOption.Fixed(percent),
-                        label = context.getString(commonR.string.kiosk_brightness_percent, percent),
-                    ),
-                )
-            }
-        }
-    }
-
-    HADropdownMenu(
-        items = items,
-        selectedKey = selected,
-        onItemSelected = onBrightnessChanged,
-        label = stringResource(commonR.string.kiosk_brightness),
-        modifier = Modifier.fillMaxWidth(),
-    )
-}
-
-@Composable
-private fun SwitchRow(title: String, subtitle: String?, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(HADimens.SPACE4),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(role = Role.Switch) { onCheckedChange(!checked) },
-    ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(HADimens.SPACE1)) {
-            Text(
-                text = title,
-                style = HATextStyle.Body.copy(textAlign = TextAlign.Start),
-                color = LocalHAColorScheme.current.colorTextPrimary,
-            )
-            if (subtitle != null) {
-                Text(
-                    text = subtitle,
-                    style = HATextStyle.BodyMedium.copy(textAlign = TextAlign.Start),
-                    color = LocalHAColorScheme.current.colorTextSecondary,
-                )
-            }
-        }
-        HASwitch(checked = checked, onCheckedChange = onCheckedChange)
-    }
-}
-
-/**
- * A section heading.
- *
- * Start-aligned explicitly: the shared body styles centre their text, which suits a prompt but not a
- * heading sitting above a left-aligned list.
- */
-@Composable
-private fun SectionHeader(text: String) {
-    Text(
-        text = text,
-        style = HATextStyle.BodyMedium.copy(textAlign = TextAlign.Start),
-        color = LocalHAColorScheme.current.colorTextSecondary,
-        modifier = Modifier.fillMaxWidth(),
-    )
-}
-
-/** Explanatory text under a section, start-aligned for the same reason as [SectionHeader]. */
-@Composable
-private fun FooterText(text: String) {
-    Text(
-        text = text,
-        style = HATextStyle.BodyMedium.copy(textAlign = TextAlign.Start),
-        color = LocalHAColorScheme.current.colorTextSecondary,
-        modifier = Modifier.fillMaxWidth(),
-    )
-}
-
+/** How often the dashboard reloads on its own. */
 @Preview
 @Composable
 private fun KioskSettingsContentPreview() {
@@ -379,6 +239,7 @@ private fun KioskSettingsContentPreview() {
             onRequireAuthenticationChanged = {},
             onAcceptRemoteCommandsChanged = {},
             onShowRemoteCommandConfirmationsChanged = {},
+            onAutoReloadChanged = {},
             onKeepScreenOnChanged = {},
             onHideStatusBarChanged = {},
             onHideNavigationBarChanged = {},

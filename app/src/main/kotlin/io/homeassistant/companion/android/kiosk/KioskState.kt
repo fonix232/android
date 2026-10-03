@@ -15,6 +15,9 @@ import kotlin.time.Duration
  */
 internal sealed interface KioskState {
 
+    /** How often the dashboard should reload on its own, or `null` for not at all. */
+    val autoReloadInterval: Duration?
+
     /** Whether the display must be kept awake right now. */
     val keepsScreenOn: Boolean
 
@@ -30,6 +33,7 @@ internal sealed interface KioskState {
 
     /** Kiosk mode is off: nothing is hidden, and the display is left to the system and the user. */
     data object Inactive : KioskState {
+        override val autoReloadInterval: Duration? = null
         override val keepsScreenOn: Boolean = false
         override val hidesStatusBar: Boolean = false
         override val hidesNavigationBar: Boolean = false
@@ -39,6 +43,7 @@ internal sealed interface KioskState {
 
     /** Kiosk mode is on, and every value here applies to the display right now. */
     data class Active(
+        override val autoReloadInterval: Duration?,
         override val keepsScreenOn: Boolean,
         override val hidesStatusBar: Boolean,
         override val hidesNavigationBar: Boolean,
