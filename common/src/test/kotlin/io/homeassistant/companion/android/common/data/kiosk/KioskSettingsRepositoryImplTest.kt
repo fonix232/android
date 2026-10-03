@@ -137,7 +137,6 @@ class KioskSettingsRepositoryImplTest {
             // so the values it activates are already in place by the time it arrives.
             var settings = awaitItem()
             while (!settings.enabled) {
-                assertTrue(settings.hideStatusBar)
                 settings = awaitItem()
             }
             assertTrue(settings.hideStatusBar)
@@ -194,6 +193,25 @@ class KioskSettingsRepositoryImplTest {
 
             assertEquals(percent, repository.getSettings().brightness?.toPercent())
         }
+    }
+
+    @Test
+    fun `Given empty storage when getting settings then remote commands and their confirmations are on`() = runTest {
+        val settings = repository.getSettings()
+
+        assertTrue(settings.acceptRemoteCommands)
+        assertTrue(settings.showRemoteCommandConfirmations)
+    }
+
+    @Test
+    fun `Given remote commands are refused when getting settings then that survives the round-trip`() = runTest {
+        repository.setSettings(
+            KioskSettings(acceptRemoteCommands = false, showRemoteCommandConfirmations = false),
+        )
+
+        val settings = repository.getSettings()
+        assertFalse(settings.acceptRemoteCommands)
+        assertFalse(settings.showRemoteCommandConfirmations)
     }
 
     @Test

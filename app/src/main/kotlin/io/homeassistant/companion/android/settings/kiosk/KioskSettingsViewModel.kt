@@ -28,6 +28,8 @@ internal sealed interface KioskBrightnessOption {
 /** What the kiosk settings screen renders. */
 internal data class KioskSettingsViewState(
     val enabled: Boolean = false,
+    val acceptRemoteCommands: Boolean = true,
+    val showRemoteCommandConfirmations: Boolean = true,
     val hideStatusBar: Boolean = false,
     val hideNavigationBar: Boolean = false,
     val brightness: KioskBrightnessOption = KioskBrightnessOption.SystemAdjusted,
@@ -44,6 +46,14 @@ internal class KioskSettingsViewModel @Inject constructor(
 
     /** Turns kiosk mode on or off. */
     fun onEnabledChanged(enabled: Boolean) = update { it.copy(enabled = enabled) }
+
+    /** Chooses whether kiosk commands from the server are obeyed. */
+    fun onAcceptRemoteCommandsChanged(accept: Boolean) = update { it.copy(acceptRemoteCommands = accept) }
+
+    /** Chooses whether obeying a kiosk command from the server tells the user it happened. */
+    fun onShowRemoteCommandConfirmationsChanged(show: Boolean) = update {
+        it.copy(showRemoteCommandConfirmations = show)
+    }
 
     /** Chooses whether the status bar is hidden while kiosk mode is on. */
     fun onHideStatusBarChanged(hide: Boolean) = update { it.copy(hideStatusBar = hide) }
@@ -76,6 +86,8 @@ internal class KioskSettingsViewModel @Inject constructor(
 
 private fun KioskSettings.toViewState(): KioskSettingsViewState = KioskSettingsViewState(
     enabled = enabled,
+    acceptRemoteCommands = acceptRemoteCommands,
+    showRemoteCommandConfirmations = showRemoteCommandConfirmations,
     hideStatusBar = hideStatusBar,
     hideNavigationBar = hideNavigationBar,
     brightness = brightness

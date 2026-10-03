@@ -85,6 +85,8 @@ import io.homeassistant.companion.android.database.notification.NotificationItem
 import io.homeassistant.companion.android.database.settings.SettingsDao
 import io.homeassistant.companion.android.database.settings.WebsocketSetting
 import io.homeassistant.companion.android.frontend.navigation.FrontendTarget
+import io.homeassistant.companion.android.kiosk.notifications.KioskPushCommand
+import io.homeassistant.companion.android.kiosk.notifications.KioskPushCommandHandler
 import io.homeassistant.companion.android.launch.intentLaunchWithNavigateTo
 import io.homeassistant.companion.android.sensors.LocationSensorManager
 import io.homeassistant.companion.android.sensors.LocationSensorManager.Companion.setHighAccuracyModeIntervalSetting
@@ -137,6 +139,7 @@ class MessagingManager @Inject constructor(
     private val assistConfigManager: AssistConfigManager,
     private val defaultAssistantManager: DefaultAssistantManager,
     private val bluetoothSensorManager: BluetoothSensorManager,
+    private val kioskPushCommandHandler: KioskPushCommandHandler,
 ) {
     companion object {
         const val APP_PREFIX = "app://"
@@ -387,6 +390,10 @@ class MessagingManager @Inject constructor(
                 }
 
                 jsonData[NotificationData.MESSAGE] == TextToSpeechData.COMMAND_STOP_TTS -> textToSpeechClient.stopTTS()
+                KioskPushCommand.isKioskCommand(jsonData[NotificationData.MESSAGE]) && allowCommands -> {
+                    handleKioskCommand(jsonData)
+                }
+
                 jsonData[NotificationData.MESSAGE] in DEVICE_COMMANDS && allowCommands -> {
                     Timber.d("Processing device command")
                     when (jsonData[NotificationData.MESSAGE]) {
@@ -664,6 +671,27 @@ class MessagingManager @Inject constructor(
 
         if (SdkVersion.isAtLeast(Build.VERSION_CODES.O) && channelID != NotificationChannel.DEFAULT_CHANNEL_ID) {
             notificationManagerCompat.deleteNotificationChannel(channelID)
+        }
+    }
+
+    /**
+     * Obeys a kiosk command, or posts it as a notification when this app does not serve it.
+     *
+     * Falling back to a notification rather than dropping it means a command from a newer server,
+     * or a typo in an automation, is visible to whoever set the kiosk up instead of vanishing.
+     */
+    private suspend fun handleKioskCommand(data: Map<String, String>) {
+        val command = KioskPushCommand.from(data[NotificationData.MESSAGE], data)
+        if (command == null) {
+            Timber.w("Received an unsupported kiosk command, posting it to the device")
+            sendNotification(data)
+            return
+        }
+        if (kioskPushCommandHandler.handle(command) && kioskPushCommandHandler.shouldConfirm()) {
+            // The command arrives as a notification, so confirming it is posting that notification:
+            // whoever sent it is rarely standing in front of the device, and a kiosk screen may be
+            // covered by its screensaver.
+            sendNotification(data)
         }
     }
 
