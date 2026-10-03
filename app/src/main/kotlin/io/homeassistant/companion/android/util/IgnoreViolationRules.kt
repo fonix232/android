@@ -4,6 +4,7 @@ import android.os.Build
 import android.os.strictmode.DiskReadViolation
 import android.os.strictmode.DiskWriteViolation
 import android.os.strictmode.IncorrectContextUseViolation
+import android.os.strictmode.UnsafeIntentLaunchViolation
 import android.os.strictmode.Violation
 import androidx.annotation.RequiresApi
 import io.homeassistant.companion.android.common.util.IgnoreViolationRule
@@ -12,6 +13,7 @@ val vmPolicyIgnoredViolationRules = listOf(
     IgnoreChromiumWebViewWrongContextUsage,
     IgnoreChromiumWebViewSetDebuggingEnabledWrongContextUsage,
     IgnoreBarcodeScannerRotationListenerWrongContextUsage,
+    IgnoreAutofillAuthenticationUnsafeIntentLaunch,
 )
 
 val threadPolicyIgnoredViolationRules = listOf(
@@ -274,6 +276,34 @@ private data object IgnoreMiuiTurboSchedMonitorDiskRead : IgnoreViolationRule {
         return violation.stackTrace.any {
             it.className == "android.os.TurboSchedMonitorImpl"
         }
+    }
+}
+
+/**
+ * Ignore an [UnsafeIntentLaunchViolation] from the platform's autofill authentication.
+ *
+ * When the user picks a saved credential whose provider has to be unlocked first,
+ * [android.view.autofill.AutofillManager] hands that provider's `IntentSender` to
+ * `Activity.startIntentSenderForResultInner`, which StrictMode flags on its way out of the process.
+ * The intent, its extras and its destination all belong to the autofill provider; the app neither
+ * builds nor forwards it, and only hosts the field that was tapped.
+ *
+ * Matching requires both framework frames so a genuine unsafe intent launch from application code
+ * still fails fast.
+ */
+private data object IgnoreAutofillAuthenticationUnsafeIntentLaunch : IgnoreViolationRule {
+    @RequiresApi(Build.VERSION_CODES.S)
+    override fun shouldIgnore(violation: Violation): Boolean {
+        if (violation !is UnsafeIntentLaunchViolation) return false
+
+        return violation.stackTrace.any {
+            it.className == "android.app.Activity" &&
+                it.methodName == "autofillClientAuthenticate"
+        } &&
+            violation.stackTrace.any {
+                it.className == "android.view.autofill.AutofillManager" &&
+                    it.methodName == "authenticate"
+            }
     }
 }
 
