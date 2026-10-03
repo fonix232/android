@@ -3,8 +3,10 @@ package io.homeassistant.companion.android.settings.kiosk
 import app.cash.turbine.test
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
+import io.homeassistant.companion.android.common.data.kiosk.KioskSoundThreshold
 import io.homeassistant.companion.android.kiosk.FakeKioskSettingsRepository
 import io.homeassistant.companion.android.testing.unit.MainDispatcherJUnit5Extension
+import io.mockk.mockk
 import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -23,7 +25,7 @@ class KioskScreensaverSettingsViewModelTest {
     private lateinit var viewModel: KioskScreensaverSettingsViewModel
 
     private fun createViewModel() {
-        viewModel = KioskScreensaverSettingsViewModel(repository)
+        viewModel = KioskScreensaverSettingsViewModel(repository, mockk(relaxed = true))
     }
 
     @Test
@@ -77,6 +79,26 @@ class KioskScreensaverSettingsViewModelTest {
         val stored = repository.getSettings()
         assertEquals(KioskScreensaverMode.BLANK, stored.screensaverMode)
         assertEquals(30.minutes, stored.screensaverIdleTimeout)
+    }
+
+    @Test
+    fun `Given the user turns on waking on sound then it is stored`() = runTest {
+        createViewModel()
+
+        viewModel.onWakeOnSoundChanged(true)
+        advanceUntilIdle()
+
+        assertTrue(repository.getSettings().wakeOnSound)
+    }
+
+    @Test
+    fun `Given the user drags the threshold then it is stored clamped`() = runTest {
+        createViewModel()
+
+        viewModel.onSoundWakeThresholdChanged(2f)
+        advanceUntilIdle()
+
+        assertEquals(KioskSoundThreshold.MAX_VALUE, repository.getSettings().soundWakeThreshold.value)
     }
 
     @Test

@@ -16,8 +16,11 @@ class KioskScreensaverSettingsScreenshotTest {
         HAThemeForPreview {
             KioskScreensaverSettingsContent(
                 viewState = KioskScreensaverSettingsViewState(mode = KioskScreensaverMode.DISABLED),
+                soundLevel = null,
                 onModeChanged = {},
                 onIdleTimeoutChanged = {},
+                onWakeOnSoundChanged = {},
+                onSoundWakeThresholdChanged = {},
             )
         }
     }
@@ -32,8 +35,32 @@ class KioskScreensaverSettingsScreenshotTest {
                     mode = KioskScreensaverMode.CLOCK,
                     idleTimeout = 10.minutes,
                 ),
+                soundLevel = null,
                 onModeChanged = {},
                 onIdleTimeoutChanged = {},
+                onWakeOnSoundChanged = {},
+                onSoundWakeThresholdChanged = {},
+            )
+        }
+    }
+
+    @PreviewLightDark
+    @PreviewTest
+    @Composable
+    fun `Screensaver settings calibrating wake on sound`() {
+        HAThemeForPreview {
+            KioskScreensaverSettingsContent(
+                viewState = KioskScreensaverSettingsViewState(
+                    mode = KioskScreensaverMode.CLOCK,
+                    idleTimeout = 10.minutes,
+                    wakeOnSound = true,
+                    soundWakeThreshold = 0.25f,
+                ),
+                soundLevel = 0.45f,
+                onModeChanged = {},
+                onIdleTimeoutChanged = {},
+                onWakeOnSoundChanged = {},
+                onSoundWakeThresholdChanged = {},
             )
         }
     }
