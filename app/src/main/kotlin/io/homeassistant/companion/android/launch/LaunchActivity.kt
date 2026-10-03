@@ -34,8 +34,11 @@ import androidx.core.view.WindowInsetsCompat.Type.navigationBars
 import androidx.core.view.WindowInsetsCompat.Type.statusBars
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
@@ -211,6 +214,8 @@ class LaunchActivity : AppCompatActivity() {
                 val hazeState = rememberHazeState()
                 val snackbarHostState = remember { SnackbarHostState() }
 
+                KioskForegroundEffect(viewModel)
+
                 SystemBarsEffect(systemBars = systemBars)
 
                 ForcedBrightnessEffect(brightness = forcedBrightness)
@@ -353,6 +358,24 @@ private fun AppLockEffect(isAppLocked: Boolean, onAuthSucceeded: () -> Unit) {
     LaunchedEffect(isAppLocked) {
         if (isAppLocked) {
             authenticator.authenticate(biometricTitle)
+        }
+    }
+}
+
+/**
+ * Runs the kiosk's collectors only while this screen is in the foreground.
+ *
+ * They cannot run in [LaunchViewModel]'s own scope: it survives backgrounding for as long as the
+ * activity stays in the back stack, which is not what "while the kiosk is on screen" means for a
+ * request to cover the dashboard, nor for anything that opens a sensor.
+ */
+@Composable
+private fun KioskForegroundEffect(viewModel: LaunchViewModel) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    LaunchedEffect(lifecycleOwner, viewModel) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.observeScreensaverRequests()
         }
     }
 }

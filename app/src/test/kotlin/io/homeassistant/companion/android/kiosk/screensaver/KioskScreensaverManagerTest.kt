@@ -1,7 +1,9 @@
 package io.homeassistant.companion.android.kiosk.screensaver
 
 import app.cash.turbine.test
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverController
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverRequest
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.kiosk.FakeKioskSettingsRepository
 import io.homeassistant.companion.android.kiosk.ObserveKioskStateUseCase
@@ -12,11 +14,15 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalTime::class, ExperimentalCoroutinesApi::class)
@@ -24,7 +30,8 @@ class KioskScreensaverManagerTest {
 
     private val repository = FakeKioskSettingsRepository()
     private val clock = FakeClock().apply { currentInstant = START }
-    private val manager = KioskScreensaverManager(ObserveKioskStateUseCase(repository), clock)
+    private val controller = KioskScreensaverController()
+    private val manager = KioskScreensaverManager(ObserveKioskStateUseCase(repository), controller, clock)
 
     /**
      * Advances the test scheduler and the [FakeClock] together, so `delay` and `Clock.now()` agree
@@ -155,6 +162,72 @@ class KioskScreensaverManagerTest {
             // another timeout.
             assertNull(awaitItem())
             assertEquals(KioskScreensaverMode.BLANK, awaitItem()?.mode)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `Given a show request when the device is not idle then the screensaver appears at once`() = runTest {
+        enableScreensaver()
+        backgroundScope.launch { manager.observeRequests() }
+
+        manager.screensaverFlow().test {
+            assertNull(awaitItem())
+
+            controller.request(KioskScreensaverRequest.Show)
+            runCurrent()
+
+            assertEquals(KioskScreensaverMode.CLOCK, awaitItem()?.mode)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `Given the screensaver is showing when a hide request arrives then the dashboard comes back`() = runTest {
+        enableScreensaver()
+        backgroundScope.launch { manager.observeRequests() }
+
+        manager.screensaverFlow().test {
+            assertNull(awaitItem())
+            advanceBoth(IDLE_TIMEOUT)
+            assertEquals(KioskScreensaverMode.CLOCK, awaitItem()?.mode)
+
+            controller.request(KioskScreensaverRequest.Hide)
+            runCurrent()
+
+            assertNull(awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `Given no screensaver configured when a show request arrives then nothing is shown`() = runTest {
+        repository.setSettings(KioskSettings(enabled = true, screensaverMode = KioskScreensaverMode.DISABLED))
+        backgroundScope.launch { manager.observeRequests() }
+
+        manager.screensaverFlow().test {
+            assertNull(awaitItem())
+
+            controller.request(KioskScreensaverRequest.Show)
+            runCurrent()
+
+            expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `Given the screensaver appears then the controller reports it visible`() = runTest {
+        enableScreensaver()
+
+        manager.screensaverFlow().test {
+            assertNull(awaitItem())
+            assertFalse(controller.isVisible.value)
+
+            advanceBoth(IDLE_TIMEOUT)
+            awaitItem()
+
+            assertTrue(controller.isVisible.value)
             cancelAndIgnoreRemainingEvents()
         }
     }

@@ -1,5 +1,7 @@
 package io.homeassistant.companion.android.kiosk.notifications
 
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverController
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverRequest
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettingsRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -12,7 +14,10 @@ import timber.log.Timber
  * cannot reconfigure a device whose owner has opted out.
  */
 @Singleton
-class KioskPushCommandHandler @Inject constructor(private val kioskSettingsRepository: KioskSettingsRepository) {
+class KioskPushCommandHandler @Inject constructor(
+    private val kioskSettingsRepository: KioskSettingsRepository,
+    private val screensaverController: KioskScreensaverController,
+) {
 
     /**
      * Applies [command], and returns whether it was obeyed.
@@ -26,14 +31,20 @@ class KioskPushCommandHandler @Inject constructor(private val kioskSettingsRepos
             return false
         }
 
-        // Through updateSettings rather than a read followed by a write: two commands arriving
-        // together, or a command racing the settings screen, would otherwise each persist a whole
-        // configuration read before the other landed.
-        kioskSettingsRepository.updateSettings { settings ->
-            when (command) {
-                is KioskPushCommand.SetBrightness -> settings.copy(brightness = command.brightness)
-                is KioskPushCommand.SetScreensaverMode -> settings.copy(screensaverMode = command.mode)
-            }
+        when (command) {
+            // Through updateSettings rather than a read followed by a write: two commands arriving
+            // together, or a command racing the settings screen, would otherwise each persist a
+            // whole configuration read before the other landed.
+            is KioskPushCommand.SetBrightness ->
+                kioskSettingsRepository.updateSettings { it.copy(brightness = command.brightness) }
+
+            is KioskPushCommand.SetScreensaverMode ->
+                kioskSettingsRepository.updateSettings { it.copy(screensaverMode = command.mode) }
+
+            // These two change nothing stored: they ask the screen showing the dashboard to cover
+            // or uncover it now, leaving the configured timeout alone.
+            KioskPushCommand.ShowScreensaver -> screensaverController.request(KioskScreensaverRequest.Show)
+            KioskPushCommand.HideScreensaver -> screensaverController.request(KioskScreensaverRequest.Hide)
         }
         return true
     }

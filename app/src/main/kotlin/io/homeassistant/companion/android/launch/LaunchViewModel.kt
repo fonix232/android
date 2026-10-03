@@ -197,6 +197,15 @@ internal class LaunchViewModel @VisibleForTesting constructor(
         }
     }
 
+    /**
+     * Honors show and hide requests from a server while collected.
+     *
+     * Collected from the activity rather than from [viewModelScope], which outlives the foreground:
+     * a request arriving while the app is in the background has no dashboard to act on, and acting
+     * on it later would cover one at an unrelated moment.
+     */
+    suspend fun observeScreensaverRequests() = screensaverManager.observeRequests()
+
     /** Reports that the user is interacting with the app, which keeps the screensaver away. */
     fun onUserInteraction() {
         screensaverManager.onUserInteraction()
