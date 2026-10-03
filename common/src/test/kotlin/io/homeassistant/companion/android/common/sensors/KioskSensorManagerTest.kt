@@ -3,7 +3,7 @@ package io.homeassistant.companion.android.common.sensors
 import android.content.Context
 import dagger.hilt.android.testing.HiltTestApplication
 import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
-import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverController
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreenController
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettingsRepository
@@ -43,7 +43,7 @@ class KioskSensorManagerTest {
     private lateinit var context: Context
     private lateinit var sensorRepository: SensorRepository
     private lateinit var serverManager: ServerManager
-    private val screensaverController = KioskScreensaverController()
+    private val screensaverController = KioskScreenController()
 
     private fun enabledSensor(id: String, enabled: Boolean = true) = Sensor(
         id = id,
