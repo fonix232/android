@@ -29,6 +29,7 @@ import io.homeassistant.companion.android.common.compose.theme.HADimens
 import io.homeassistant.companion.android.common.compose.theme.HATextStyle
 import io.homeassistant.companion.android.common.compose.theme.HAThemeForPreview
 import io.homeassistant.companion.android.common.compose.theme.LocalHAColorScheme
+import io.homeassistant.companion.android.common.data.kiosk.KioskCornerPosition
 import io.homeassistant.companion.android.util.plus
 import io.homeassistant.companion.android.util.safeBottomPaddingValues
 import org.jetbrains.annotations.VisibleForTesting
@@ -65,6 +66,8 @@ internal fun KioskSettingsScreen(
         onRequireAuthenticationChanged = viewModel::onRequireAuthenticationChanged,
         onAcceptRemoteCommandsChanged = viewModel::onAcceptRemoteCommandsChanged,
         onShowRemoteCommandConfirmationsChanged = viewModel::onShowRemoteCommandConfirmationsChanged,
+        onSettingsEntryPositionChanged = viewModel::onSettingsEntryPositionChanged,
+        onSettingsEntryHiddenChanged = viewModel::onSettingsEntryHiddenChanged,
         onServerChanged = viewModel::onServerChanged,
         onDashboardPathChanged = viewModel::onDashboardPathChanged,
         onDisplaySettingChanged = viewModel::onDisplaySettingChanged,
@@ -81,6 +84,8 @@ internal fun KioskSettingsContent(
     onRequireAuthenticationChanged: (Boolean) -> Unit,
     onAcceptRemoteCommandsChanged: (Boolean) -> Unit,
     onShowRemoteCommandConfirmationsChanged: (Boolean) -> Unit,
+    onSettingsEntryPositionChanged: (KioskCornerPosition) -> Unit,
+    onSettingsEntryHiddenChanged: (Boolean) -> Unit,
     onServerChanged: (Int?) -> Unit,
     onDashboardPathChanged: (String) -> Unit,
     onDisplaySettingChanged: (KioskDisplaySetting) -> Unit,
@@ -118,6 +123,13 @@ internal fun KioskSettingsContent(
             dashboardPath = viewState.dashboardPath,
             onServerChanged = onServerChanged,
             onDashboardPathChanged = onDashboardPathChanged,
+        )
+
+        SettingsEntrySection(
+            position = viewState.settingsEntryPosition,
+            hidden = viewState.settingsEntryHidden,
+            onPositionChanged = onSettingsEntryPositionChanged,
+            onHiddenChanged = onSettingsEntryHiddenChanged,
         )
 
         RemoteCommandsSection(
@@ -238,6 +250,8 @@ private fun KioskSettingsContentPreview() {
             onRequireAuthenticationChanged = {},
             onAcceptRemoteCommandsChanged = {},
             onShowRemoteCommandConfirmationsChanged = {},
+            onSettingsEntryPositionChanged = {},
+            onSettingsEntryHiddenChanged = {},
             onServerChanged = {},
             onDashboardPathChanged = {},
             onDisplaySettingChanged = {},

@@ -1,6 +1,7 @@
 package io.homeassistant.companion.android.kiosk
 
 import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
+import io.homeassistant.companion.android.common.data.kiosk.KioskCornerPosition
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.common.data.kiosk.KioskSoundThreshold
@@ -15,6 +16,9 @@ import kotlin.time.Duration
  * Read it through [ObserveKioskStateUseCase].
  */
 internal sealed interface KioskState {
+
+    /** Where the settings button sits, or `null` when kiosk mode is off and there is none. */
+    val settingsEntry: KioskSettingsEntry?
 
     /** How often the dashboard should reload on its own, or `null` for not at all. */
     val autoReloadInterval: Duration?
@@ -42,6 +46,7 @@ internal sealed interface KioskState {
 
     /** Kiosk mode is off: nothing is hidden, and the display is left to the system and the user. */
     data object Inactive : KioskState {
+        override val settingsEntry: KioskSettingsEntry? = null
         override val autoReloadInterval: Duration? = null
         override val keepsScreenOn: Boolean = false
         override val hidesStatusBar: Boolean = false
@@ -53,6 +58,7 @@ internal sealed interface KioskState {
 
     /** Kiosk mode is on, and every value here applies to the display right now. */
     data class Active(
+        override val settingsEntry: KioskSettingsEntry,
         override val autoReloadInterval: Duration?,
         override val keepsScreenOn: Boolean,
         override val hidesStatusBar: Boolean,
@@ -70,3 +76,6 @@ internal sealed interface KioskState {
  * [KioskState.screensaver] instead.
  */
 internal data class KioskScreensaver(val mode: KioskScreensaverMode, val idleTimeout: Duration)
+
+/** Where the button that opens the kiosk settings sits, and whether it can be seen. */
+internal data class KioskSettingsEntry(val position: KioskCornerPosition, val hidden: Boolean)

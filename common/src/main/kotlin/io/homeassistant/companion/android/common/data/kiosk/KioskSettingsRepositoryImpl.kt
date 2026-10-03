@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 
 private const val PREF_KIOSK_ENABLED = "kiosk_enabled"
+private const val PREF_KIOSK_SETTINGS_ENTRY_POSITION = "kiosk_settings_entry_position"
+private const val PREF_KIOSK_SETTINGS_ENTRY_HIDDEN = "kiosk_settings_entry_hidden"
 private const val PREF_KIOSK_SERVER_ID = "kiosk_server_id"
 private const val PREF_KIOSK_DASHBOARD_PATH = "kiosk_dashboard_path"
 private const val PREF_KIOSK_REQUIRE_AUTHENTICATION = "kiosk_require_authentication"
@@ -37,6 +39,8 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
         val idleTimeout = settings.screensaverIdleTimeout.coerceAtLeast(KioskSettings.MIN_SCREENSAVER_IDLE_TIMEOUT)
 
         localStorage.putBoolean(PREF_KIOSK_ENABLED, settings.enabled)
+        localStorage.putString(PREF_KIOSK_SETTINGS_ENTRY_POSITION, settings.settingsEntryPosition.storageValue)
+        localStorage.putBoolean(PREF_KIOSK_SETTINGS_ENTRY_HIDDEN, settings.settingsEntryHidden)
         localStorage.putInt(PREF_KIOSK_SERVER_ID, settings.serverId)
         localStorage.putString(PREF_KIOSK_DASHBOARD_PATH, settings.dashboardPath)
         localStorage.putBoolean(PREF_KIOSK_REQUIRE_AUTHENTICATION, settings.requireAuthentication)
@@ -63,6 +67,8 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
         emitAll(
             localStorage.observeChanges(
                 PREF_KIOSK_ENABLED,
+                PREF_KIOSK_SETTINGS_ENTRY_POSITION,
+                PREF_KIOSK_SETTINGS_ENTRY_HIDDEN,
                 PREF_KIOSK_SERVER_ID,
                 PREF_KIOSK_DASHBOARD_PATH,
                 PREF_KIOSK_REQUIRE_AUTHENTICATION,
@@ -86,6 +92,10 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
         val storedTimeoutSeconds = localStorage.getLong(PREF_KIOSK_SCREENSAVER_IDLE_TIMEOUT_SECONDS)
         return KioskSettings(
             enabled = localStorage.getBoolean(PREF_KIOSK_ENABLED),
+            settingsEntryPosition = KioskCornerPosition.fromStorageValue(
+                localStorage.getString(PREF_KIOSK_SETTINGS_ENTRY_POSITION),
+            ),
+            settingsEntryHidden = localStorage.getBoolean(PREF_KIOSK_SETTINGS_ENTRY_HIDDEN),
             serverId = localStorage.getInt(PREF_KIOSK_SERVER_ID),
             // Blank is stored as absent, so a cleared field reads back as the server's default.
             dashboardPath = localStorage.getString(PREF_KIOSK_DASHBOARD_PATH)?.takeIf { it.isNotBlank() },

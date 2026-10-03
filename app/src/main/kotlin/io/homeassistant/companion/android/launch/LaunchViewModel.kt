@@ -23,6 +23,7 @@ import io.homeassistant.companion.android.di.qualifiers.IsAutomotive
 import io.homeassistant.companion.android.di.qualifiers.LocationTrackingSupport
 import io.homeassistant.companion.android.frontend.navigation.FrontendRoute
 import io.homeassistant.companion.android.frontend.navigation.FrontendTarget
+import io.homeassistant.companion.android.kiosk.KioskSettingsEntry
 import io.homeassistant.companion.android.kiosk.KioskState
 import io.homeassistant.companion.android.kiosk.ObserveKioskStateUseCase
 import io.homeassistant.companion.android.kiosk.screensaver.KioskScreensaverManager
@@ -166,6 +167,15 @@ internal class LaunchViewModel @VisibleForTesting constructor(
      */
     val screensaver: StateFlow<KioskScreensaverUiState?> = screensaverManager.screensaverFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SCREENSAVER_STOP_TIMEOUT), initialValue = null)
+
+    /**
+     * Emits where the kiosk's settings button sits, or `null` when kiosk mode is off and there is
+     * no button to place.
+     */
+    val settingsEntry: StateFlow<KioskSettingsEntry?> = kioskState
+        .map { it.settingsEntry }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, initialValue = null)
 
     /**
      * Emits the brightness kiosk mode forces on the window, or `null` when the display's
