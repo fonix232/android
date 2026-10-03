@@ -41,6 +41,11 @@
             android:key="gestures"
             android:icon="@drawable/ic_gestures"
             android:title="@string/gestures"/>
+        <Preference
+            android:key="kiosk"
+            android:icon="@drawable/ic_fullscreen"
+            android:title="@string/kiosk_title"
+            android:summary="@string/kiosk_summary"/>
         <SwitchPreference
             android:key="fullscreen"
             android:icon="@drawable/ic_fullscreen"
