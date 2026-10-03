@@ -9,6 +9,7 @@ import io.homeassistant.companion.android.applock.AppLockStateManager
 import io.homeassistant.companion.android.automotive.navigation.AutomotiveRoute
 import io.homeassistant.companion.android.common.data.authentication.SessionState
 import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverController
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.common.data.network.NetworkState
@@ -82,7 +83,7 @@ class LaunchViewModelTest {
             networkStatusMonitor,
             prefsRepository,
             appLockStateManager,
-            KioskScreensaverManager(ObserveKioskStateUseCase(kioskSettingsRepository), clock),
+            KioskScreensaverManager(ObserveKioskStateUseCase(kioskSettingsRepository), KioskScreensaverController(), clock),
             ObserveKioskStateUseCase(kioskSettingsRepository),
             hasLocationTrackingSupport,
             isAutomotive,

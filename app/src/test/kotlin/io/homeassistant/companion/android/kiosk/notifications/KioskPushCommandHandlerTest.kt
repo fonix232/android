@@ -1,7 +1,10 @@
 package io.homeassistant.companion.android.kiosk.notifications
 
+import app.cash.turbine.turbineScope
 import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverController
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverRequest
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.kiosk.FakeKioskSettingsRepository
 import kotlinx.coroutines.test.runTest
@@ -14,7 +17,8 @@ import org.junit.jupiter.api.Test
 class KioskPushCommandHandlerTest {
 
     private val repository = FakeKioskSettingsRepository()
-    private val handler = KioskPushCommandHandler(repository)
+    private val controller = KioskScreensaverController()
+    private val handler = KioskPushCommandHandler(repository, controller)
 
     @Test
     fun `Given a brightness command then it is applied to the stored settings`() = runTest {
@@ -51,6 +55,43 @@ class KioskPushCommandHandlerTest {
         val stored = repository.getSettings()
         assertTrue(stored.enabled)
         assertTrue(stored.hideStatusBar)
+    }
+
+    @Test
+    fun `Given a show screensaver command then the request reaches the screen and nothing is stored`() = runTest {
+        turbineScope {
+            val requests = controller.requests.testIn(backgroundScope)
+
+            val obeyed = handler.handle(KioskPushCommand.ShowScreensaver)
+
+            assertTrue(obeyed)
+            assertEquals(KioskScreensaverRequest.Show, requests.awaitItem())
+            assertEquals(KioskScreensaverMode.DISABLED, repository.getSettings().screensaverMode)
+        }
+    }
+
+    @Test
+    fun `Given a hide screensaver command then the request reaches the screen`() = runTest {
+        turbineScope {
+            val requests = controller.requests.testIn(backgroundScope)
+
+            handler.handle(KioskPushCommand.HideScreensaver)
+
+            assertEquals(KioskScreensaverRequest.Hide, requests.awaitItem())
+        }
+    }
+
+    @Test
+    fun `Given remote commands are refused then a show request never reaches the screen`() = runTest {
+        repository.setSettings(KioskSettings(acceptRemoteCommands = false))
+        turbineScope {
+            val requests = controller.requests.testIn(backgroundScope)
+
+            assertFalse(handler.handle(KioskPushCommand.ShowScreensaver))
+
+            requests.expectNoEvents()
+            requests.cancel()
+        }
     }
 
     @Test

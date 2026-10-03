@@ -1,7 +1,9 @@
 package io.homeassistant.companion.android.kiosk.screensaver
 
 import dagger.hilt.android.scopes.ViewModelScoped
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverController
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverRequest
 import io.homeassistant.companion.android.kiosk.KioskScreensaver
 import io.homeassistant.companion.android.kiosk.ObserveKioskStateUseCase
 import javax.inject.Inject
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 
 /**
  * What the screensaver should currently show.
@@ -40,14 +43,22 @@ internal data class KioskScreensaverUiState(val mode: KioskScreensaverMode, val 
 @ViewModelScoped
 internal class KioskScreensaverManager @Inject constructor(
     private val observeKioskState: ObserveKioskStateUseCase,
+    private val screensaverController: KioskScreensaverController,
     private val clock: Clock,
 ) {
 
-    private val lastInteraction = MutableStateFlow(clock.now())
+    /**
+     * What the idle countdown runs against.
+     *
+     * One value rather than two flows so a change can never be observed half-applied: hiding the
+     * screensaver both clears the server's request and restarts the countdown, and those have to
+     * land together.
+     */
+    private val idleInput = MutableStateFlow(IdleInput(interactedAt = clock.now(), requested = false))
 
     /** Records that the user is here, which hides the screensaver and restarts the idle countdown. */
     fun onUserInteraction() {
-        lastInteraction.value = clock.now()
+        idleInput.value = IdleInput(interactedAt = clock.now(), requested = false)
     }
 
     /**
@@ -63,16 +74,34 @@ internal class KioskScreensaverManager @Inject constructor(
             if (screensaver == null) flowOf(null) else idleFlow(screensaver)
         }
         .distinctUntilChanged()
+        .onEach { screensaverController.setVisible(it != null) }
+
+    /**
+     * Honors the show and hide requests arriving from a server, for as long as it is collected.
+     *
+     * Showing is refused when no screensaver is configured: there would be nothing to show, and a
+     * blank cover the user never asked for is worse than ignoring the command.
+     */
+    suspend fun observeRequests() {
+        screensaverController.requests.collect { request ->
+            when (request) {
+                KioskScreensaverRequest.Show -> idleInput.value = idleInput.value.copy(requested = true)
+                KioskScreensaverRequest.Hide -> onUserInteraction()
+            }
+        }
+    }
 
     /**
      * Emits `null` until [screensaver]'s idle timeout passes without an interaction, then the
      * screensaver state, refreshed on every minute boundary.
      */
-    private fun idleFlow(screensaver: KioskScreensaver): Flow<KioskScreensaverUiState?> = lastInteraction
-        .flatMapLatest { interactedAt ->
+    private fun idleFlow(screensaver: KioskScreensaver): Flow<KioskScreensaverUiState?> = idleInput
+        .flatMapLatest { input ->
             flow {
-                emit(null)
-                delay(screensaver.idleTimeout - (clock.now() - interactedAt))
+                if (!input.requested) {
+                    emit(null)
+                    delay(screensaver.idleTimeout - (clock.now() - input.interactedAt))
+                }
                 while (true) {
                     val now = clock.now()
                     emit(KioskScreensaverUiState(mode = screensaver.mode, now = now))
@@ -81,6 +110,10 @@ internal class KioskScreensaverManager @Inject constructor(
             }
         }
 }
+
+/** When the user was last here, and whether a server has overridden that by asking for the screensaver. */
+@OptIn(ExperimentalTime::class)
+private data class IdleInput(val interactedAt: Instant, val requested: Boolean)
 
 /**
  * How long until the start of the next minute.

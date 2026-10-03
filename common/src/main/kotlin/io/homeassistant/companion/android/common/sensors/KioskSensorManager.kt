@@ -3,6 +3,7 @@ package io.homeassistant.companion.android.common.sensors
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.homeassistant.companion.android.common.R as commonR
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverController
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettingsRepository
 import io.homeassistant.companion.android.common.data.servers.ServerManager
@@ -34,6 +35,7 @@ class KioskSensorManager @Inject constructor(
     override val sensorRepository: SensorRepository,
     override val serverManager: ServerManager,
     private val kioskSettingsRepository: KioskSettingsRepository,
+    private val screensaverController: KioskScreensaverController,
 ) : SensorManager {
 
     companion object {
@@ -46,6 +48,16 @@ class KioskSensorManager @Inject constructor(
             "mdi:tablet-dashboard",
             entityCategory = SensorManager.ENTITY_CATEGORY_DIAGNOSTIC,
         )
+
+        @ProvidesSensor
+        internal val kioskScreensaver = SensorManager.BasicSensor(
+            "kiosk_screensaver",
+            "binary_sensor",
+            commonR.string.basic_sensor_name_kiosk_screensaver,
+            commonR.string.sensor_description_kiosk_screensaver,
+            "mdi:weather-night",
+            entityCategory = SensorManager.ENTITY_CATEGORY_DIAGNOSTIC,
+        )
     }
 
     override fun docsLink(): String = "https://companion.home-assistant.io/docs/core/sensors"
@@ -53,20 +65,26 @@ class KioskSensorManager @Inject constructor(
     override val name: Int
         get() = commonR.string.sensor_name_kiosk
 
-    override suspend fun getAvailableSensors(): List<SensorManager.BasicSensor> = listOf(kioskMode)
+    override suspend fun getAvailableSensors(): List<SensorManager.BasicSensor> = listOf(kioskMode, kioskScreensaver)
 
     override fun requiredPermissions(sensorId: String): Array<String> = emptyArray()
 
     override suspend fun requestSensorUpdate() {
-        if (!isEnabled(kioskMode)) return
+        if (isEnabled(kioskMode)) {
+            val settings = kioskSettingsRepository.getSettings()
+            onSensorUpdated(kioskMode, settings.enabled, kioskMode.statelessIcon, settings.toAttributes())
+        }
 
-        val settings = kioskSettingsRepository.getSettings()
-        onSensorUpdated(
-            kioskMode,
-            settings.enabled,
-            kioskMode.statelessIcon,
-            settings.toAttributes(),
-        )
+        if (isEnabled(kioskScreensaver)) {
+            // False whenever no screen is showing the dashboard, which is correct: a screensaver
+            // that is not drawn is not covering anything.
+            onSensorUpdated(
+                kioskScreensaver,
+                screensaverController.isVisible.value,
+                kioskScreensaver.statelessIcon,
+                emptyMap(),
+            )
+        }
     }
 }
 

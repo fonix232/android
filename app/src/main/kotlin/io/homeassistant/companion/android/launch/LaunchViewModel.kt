@@ -195,6 +195,11 @@ internal class LaunchViewModel @VisibleForTesting constructor(
             cleanupServers()
             handleInitialState(initialDeepLink)
         }
+        viewModelScope.launch {
+            // Lives as long as the screen that can draw the screensaver, which is exactly as long
+            // as a request to show or hide it has anything to act on.
+            screensaverManager.observeRequests()
+        }
     }
 
     /** Reports that the user is interacting with the app, which keeps the screensaver away. */
