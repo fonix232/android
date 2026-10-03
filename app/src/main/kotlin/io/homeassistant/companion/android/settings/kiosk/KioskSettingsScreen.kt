@@ -3,6 +3,7 @@ package io.homeassistant.companion.android.settings.kiosk
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -26,6 +27,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.homeassistant.companion.android.common.R as commonR
 import io.homeassistant.companion.android.common.compose.composable.HADropdownItem
 import io.homeassistant.companion.android.common.compose.composable.HADropdownMenu
+import io.homeassistant.companion.android.common.compose.composable.HAFilledButton
+import io.homeassistant.companion.android.common.compose.composable.HALoading
 import io.homeassistant.companion.android.common.compose.composable.HASettingsCard
 import io.homeassistant.companion.android.common.compose.composable.HASwitch
 import io.homeassistant.companion.android.common.compose.theme.HADimens
@@ -46,13 +49,29 @@ private const val PREVIEW_BRIGHTNESS_PERCENT = 40
 internal fun KioskSettingsScreen(
     viewModel: KioskSettingsViewModel,
     onScreensaverClick: () -> Unit,
+    onUnlockClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewState by viewModel.viewState.collectAsStateWithLifecycle()
 
+    when (viewState.lock) {
+        KioskSettingsLock.UNKNOWN -> {
+            Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) { HALoading() }
+            return
+        }
+
+        KioskSettingsLock.LOCKED -> {
+            KioskSettingsLocked(onUnlockClick = onUnlockClick, modifier = modifier)
+            return
+        }
+
+        KioskSettingsLock.NOT_REQUIRED, KioskSettingsLock.UNLOCKED -> Unit
+    }
+
     KioskSettingsContent(
         viewState = viewState,
         onEnabledChanged = viewModel::onEnabledChanged,
+        onRequireAuthenticationChanged = viewModel::onRequireAuthenticationChanged,
         onAcceptRemoteCommandsChanged = viewModel::onAcceptRemoteCommandsChanged,
         onShowRemoteCommandConfirmationsChanged = viewModel::onShowRemoteCommandConfirmationsChanged,
         onHideStatusBarChanged = viewModel::onHideStatusBarChanged,
@@ -68,6 +87,7 @@ internal fun KioskSettingsScreen(
 internal fun KioskSettingsContent(
     viewState: KioskSettingsViewState,
     onEnabledChanged: (Boolean) -> Unit,
+    onRequireAuthenticationChanged: (Boolean) -> Unit,
     onAcceptRemoteCommandsChanged: (Boolean) -> Unit,
     onShowRemoteCommandConfirmationsChanged: (Boolean) -> Unit,
     onHideStatusBarChanged: (Boolean) -> Unit,
@@ -89,6 +109,15 @@ internal fun KioskSettingsContent(
                 subtitle = stringResource(commonR.string.kiosk_enabled_summary),
                 checked = viewState.enabled,
                 onCheckedChange = onEnabledChanged,
+            )
+        }
+
+        HASettingsCard {
+            SwitchRow(
+                title = stringResource(commonR.string.kiosk_require_authentication),
+                subtitle = stringResource(commonR.string.kiosk_require_authentication_summary),
+                checked = viewState.requireAuthentication,
+                onCheckedChange = onRequireAuthenticationChanged,
             )
         }
 
@@ -207,6 +236,33 @@ private fun DisplaySection(
 }
 
 /**
+ * Shown in place of the settings while they are protected and not yet unlocked.
+ *
+ * It replaces the content rather than covering it, so a protected setting is never briefly on
+ * screen behind an overlay.
+ */
+@Composable
+private fun KioskSettingsLocked(onUnlockClick: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(HADimens.SPACE4),
+        verticalArrangement = Arrangement.spacedBy(HADimens.SPACE4, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = stringResource(commonR.string.kiosk_locked_title),
+            style = HATextStyle.Headline,
+            color = LocalHAColorScheme.current.colorTextPrimary,
+        )
+        HAFilledButton(
+            text = stringResource(commonR.string.kiosk_locked_unlock),
+            onClick = onUnlockClick,
+        )
+    }
+}
+
+/**
  * The brightness picker.
  *
  * A dropdown of fixed levels rather than a slider: the design system has no `HASlider`, and
@@ -308,6 +364,7 @@ private fun KioskSettingsContentPreview() {
                 brightness = KioskBrightnessOption.Fixed(PREVIEW_BRIGHTNESS_PERCENT),
             ),
             onEnabledChanged = {},
+            onRequireAuthenticationChanged = {},
             onAcceptRemoteCommandsChanged = {},
             onShowRemoteCommandConfirmationsChanged = {},
             onHideStatusBarChanged = {},

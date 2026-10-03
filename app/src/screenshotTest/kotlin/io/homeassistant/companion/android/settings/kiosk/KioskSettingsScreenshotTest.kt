@@ -15,6 +15,7 @@ class KioskSettingsScreenshotTest {
             KioskSettingsContent(
                 viewState = KioskSettingsViewState(),
                 onEnabledChanged = {},
+                onRequireAuthenticationChanged = {},
                 onAcceptRemoteCommandsChanged = {},
                 onShowRemoteCommandConfirmationsChanged = {},
                 onHideStatusBarChanged = {},
@@ -38,6 +39,7 @@ class KioskSettingsScreenshotTest {
                     brightness = KioskBrightnessOption.Fixed(40),
                 ),
                 onEnabledChanged = {},
+                onRequireAuthenticationChanged = {},
                 onAcceptRemoteCommandsChanged = {},
                 onShowRemoteCommandConfirmationsChanged = {},
                 onHideStatusBarChanged = {},

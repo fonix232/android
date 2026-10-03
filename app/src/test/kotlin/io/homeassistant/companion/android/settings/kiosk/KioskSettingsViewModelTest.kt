@@ -95,6 +95,55 @@ class KioskSettingsViewModelTest {
     }
 
     @Test
+    fun `Given the settings are unprotected then nothing is locked`() = runTest {
+        createViewModel()
+
+        viewModel.viewState.test {
+            assertEquals(KioskSettingsLock.UNKNOWN, awaitItem().lock)
+            assertEquals(KioskSettingsLock.NOT_REQUIRED, awaitItem().lock)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `Given the settings are protected then they start locked`() = runTest {
+        repository.setSettings(KioskSettings(requireAuthentication = true))
+        createViewModel()
+
+        viewModel.viewState.test {
+            assertEquals(KioskSettingsLock.UNKNOWN, awaitItem().lock)
+            assertEquals(KioskSettingsLock.LOCKED, awaitItem().lock)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `Given protected settings when the user authenticates then they unlock`() = runTest {
+        repository.setSettings(KioskSettings(requireAuthentication = true))
+        createViewModel()
+
+        viewModel.viewState.test {
+            assertEquals(KioskSettingsLock.UNKNOWN, awaitItem().lock)
+            assertEquals(KioskSettingsLock.LOCKED, awaitItem().lock)
+
+            viewModel.onAuthenticated()
+
+            assertEquals(KioskSettingsLock.UNLOCKED, awaitItem().lock)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `Given the user asks for protection then it is stored`() = runTest {
+        createViewModel()
+
+        viewModel.onRequireAuthenticationChanged(true)
+        advanceUntilIdle()
+
+        assertTrue(repository.getSettings().requireAuthentication)
+    }
+
+    @Test
     fun `Given the user hides both system bars then both are stored`() = runTest {
         createViewModel()
         viewModel.onHideStatusBarChanged(true)
