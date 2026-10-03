@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.homeassistant.companion.android.common.data.kiosk.KioskAutoReloadInterval
 import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
+import io.homeassistant.companion.android.common.data.kiosk.KioskCornerPosition
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettingsRepository
 import io.homeassistant.companion.android.common.data.servers.ServerManager
@@ -80,6 +81,8 @@ internal data class KioskSettingsViewState(
     val requireAuthentication: Boolean = false,
     val acceptRemoteCommands: Boolean = true,
     val showRemoteCommandConfirmations: Boolean = true,
+    val settingsEntryPosition: KioskCornerPosition = KioskCornerPosition.BOTTOM_END,
+    val settingsEntryHidden: Boolean = false,
     val servers: List<KioskServerOption> = emptyList(),
     val serverId: Int? = null,
     val dashboardPath: String = "",
@@ -130,6 +133,14 @@ internal class KioskSettingsViewModel @Inject constructor(
         it.copy(showRemoteCommandConfirmations = show)
     }
 
+    /** Chooses which corner the button that opens these settings sits in. */
+    fun onSettingsEntryPositionChanged(position: KioskCornerPosition) = update {
+        it.copy(settingsEntryPosition = position)
+    }
+
+    /** Chooses whether that button is invisible; it stays tappable either way. */
+    fun onSettingsEntryHiddenChanged(hidden: Boolean) = update { it.copy(settingsEntryHidden = hidden) }
+
     /** Pins the kiosk to a server, or to whichever is active when [serverId] is null. */
     fun onServerChanged(serverId: Int?) = update { it.copy(serverId = serverId) }
 
@@ -167,6 +178,8 @@ internal class KioskSettingsViewModel @Inject constructor(
 
 private fun KioskSettings.toViewState(unlocked: Boolean, servers: List<KioskServerOption>): KioskSettingsViewState =
     KioskSettingsViewState(
+        settingsEntryPosition = settingsEntryPosition,
+        settingsEntryHidden = settingsEntryHidden,
         servers = servers,
         serverId = serverId,
         dashboardPath = dashboardPath.orEmpty(),

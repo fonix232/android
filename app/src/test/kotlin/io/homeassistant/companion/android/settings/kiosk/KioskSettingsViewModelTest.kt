@@ -3,6 +3,7 @@ package io.homeassistant.companion.android.settings.kiosk
 import app.cash.turbine.test
 import io.homeassistant.companion.android.common.data.kiosk.KioskAutoReloadInterval
 import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
+import io.homeassistant.companion.android.common.data.kiosk.KioskCornerPosition
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.common.data.servers.ServerManager
 import io.homeassistant.companion.android.kiosk.FakeKioskSettingsRepository
@@ -158,6 +159,26 @@ class KioskSettingsViewModelTest {
         advanceUntilIdle()
 
         assertEquals(KioskAutoReloadInterval.MINUTES_15, repository.getSettings().autoReload)
+    }
+
+    @Test
+    fun `Given the user moves the settings button then the corner is stored`() = runTest {
+        createViewModel()
+
+        viewModel.onSettingsEntryPositionChanged(KioskCornerPosition.TOP_START)
+        advanceUntilIdle()
+
+        assertEquals(KioskCornerPosition.TOP_START, repository.getSettings().settingsEntryPosition)
+    }
+
+    @Test
+    fun `Given the user hides the settings button then it is stored hidden`() = runTest {
+        createViewModel()
+
+        viewModel.onSettingsEntryHiddenChanged(true)
+        advanceUntilIdle()
+
+        assertTrue(repository.getSettings().settingsEntryHidden)
     }
 
     @Test

@@ -48,6 +48,8 @@ class KioskSettingsScreenTest {
                     onRequireAuthenticationChanged = {},
                     onAcceptRemoteCommandsChanged = acceptRemoteCommandsChanges::add,
                     onShowRemoteCommandConfirmationsChanged = {},
+                    onSettingsEntryPositionChanged = {},
+                    onSettingsEntryHiddenChanged = {},
                     onServerChanged = {},
                     onDashboardPathChanged = {},
                     onDisplaySettingChanged = displayChanges::add,
