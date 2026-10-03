@@ -6,6 +6,7 @@ import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverRequest
 import io.homeassistant.companion.android.kiosk.KioskScreensaver
 import io.homeassistant.companion.android.kiosk.ObserveKioskStateUseCase
+import io.homeassistant.companion.android.kiosk.audio.KioskAudioWakeDetector
 import javax.inject.Inject
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -18,12 +19,14 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import timber.log.Timber
 
 /**
  * What the screensaver should currently show.
@@ -44,6 +47,7 @@ internal data class KioskScreensaverUiState(val mode: KioskScreensaverMode, val 
 internal class KioskScreensaverManager @Inject constructor(
     private val observeKioskState: ObserveKioskStateUseCase,
     private val screensaverController: KioskScreensaverController,
+    private val audioWakeDetector: KioskAudioWakeDetector,
     private val clock: Clock,
 ) {
 
@@ -75,6 +79,27 @@ internal class KioskScreensaverManager @Inject constructor(
         }
         .distinctUntilChanged()
         .onEach { screensaverController.setVisible(it != null) }
+
+    /**
+     * Treats a sound above the configured threshold as somebody being there, for as long as it is
+     * collected.
+     *
+     * The microphone is only open while this runs, and this only runs while the screen that can
+     * show a screensaver does. Nothing listens unless the user turned sound waking on and a
+     * screensaver is configured to wake from.
+     */
+    suspend fun observeSoundWake() {
+        observeKioskState()
+            .map { it.soundWakeThreshold }
+            .distinctUntilChanged()
+            .collectLatest { threshold ->
+                if (threshold == null) return@collectLatest
+                audioWakeDetector.soundDetections(threshold).collect {
+                    Timber.d("Kiosk heard something, treating it as an interaction")
+                    onUserInteraction()
+                }
+            }
+    }
 
     /**
      * Honors the show and hide requests arriving from a server, for as long as it is collected.

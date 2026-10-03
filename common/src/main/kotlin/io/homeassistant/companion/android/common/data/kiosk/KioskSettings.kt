@@ -88,6 +88,33 @@ enum class KioskScreensaverMode(val storageValue: String) {
 }
 
 /**
+ * How loud a sound has to be to count as somebody being there, as a fraction of full scale.
+ *
+ * Values are always within [MIN_VALUE]..[MAX_VALUE]; the constructor clamps anything outside that
+ * range, so a malformed stored value degrades to the nearest usable threshold rather than leaving
+ * the screensaver permanently awake or permanently asleep.
+ */
+@JvmInline
+value class KioskSoundThreshold private constructor(val value: Float) {
+
+    companion object {
+        const val MIN_VALUE: Float = 0f
+        const val MAX_VALUE: Float = 1f
+
+        /**
+         * Threshold used until the user calibrates one.
+         *
+         * Sits above a quiet room's noise floor but below ordinary speech, so the feature does
+         * something sensible before anyone opens the meter.
+         */
+        val DEFAULT: KioskSoundThreshold = KioskSoundThreshold(0.15f)
+
+        /** Returns a threshold clamped into [MIN_VALUE]..[MAX_VALUE]. */
+        fun of(value: Float): KioskSoundThreshold = KioskSoundThreshold(value.coerceIn(MIN_VALUE, MAX_VALUE))
+    }
+}
+
+/**
  * The complete kiosk mode configuration.
  *
  * Immutable: produce changes with [copy] and persist them through
@@ -143,6 +170,17 @@ data class KioskSettings(
 
     /** How often the dashboard reloads on its own. */
     val autoReload: KioskAutoReloadInterval = KioskAutoReloadInterval.NEVER,
+
+    /**
+     * Whether a sound louder than [soundWakeThreshold] counts as somebody being there.
+     *
+     * Off by default, and nothing captures audio until the user turns it on: the microphone is not
+     * something to start using on a device's behalf.
+     */
+    val wakeOnSound: Boolean = false,
+
+    /** How loud a sound has to be before [wakeOnSound] treats it as somebody being there. */
+    val soundWakeThreshold: KioskSoundThreshold = KioskSoundThreshold.DEFAULT,
 
     val screensaverMode: KioskScreensaverMode = KioskScreensaverMode.DISABLED,
 

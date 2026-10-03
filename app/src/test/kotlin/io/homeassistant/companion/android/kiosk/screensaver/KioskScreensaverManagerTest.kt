@@ -8,6 +8,7 @@ import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.kiosk.FakeKioskSettingsRepository
 import io.homeassistant.companion.android.kiosk.ObserveKioskStateUseCase
 import io.homeassistant.companion.android.testing.unit.FakeClock
+import io.mockk.mockk
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -31,7 +32,7 @@ class KioskScreensaverManagerTest {
     private val repository = FakeKioskSettingsRepository()
     private val clock = FakeClock().apply { currentInstant = START }
     private val controller = KioskScreensaverController()
-    private val manager = KioskScreensaverManager(ObserveKioskStateUseCase(repository), controller, clock)
+    private val manager = KioskScreensaverManager(ObserveKioskStateUseCase(repository), controller, mockk(relaxed = true), clock)
 
     /**
      * Advances the test scheduler and the [FakeClock] together, so `delay` and `Clock.now()` agree
