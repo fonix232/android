@@ -9,6 +9,8 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Parcelable
 import android.view.ViewTreeObserver
+import android.view.Window
+import android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -26,7 +28,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.IntentCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.core.view.WindowInsetsCompat.Type.systemBars
+import androidx.core.view.WindowInsetsCompat.Type.navigationBars
+import androidx.core.view.WindowInsetsCompat.Type.statusBars
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -42,6 +45,7 @@ import io.homeassistant.companion.android.authenticator.Authenticator.Companion.
 import io.homeassistant.companion.android.changelog.navigation.ChangelogAutoShowEffect
 import io.homeassistant.companion.android.common.R as commonR
 import io.homeassistant.companion.android.common.compose.theme.HATheme
+import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
 import io.homeassistant.companion.android.common.sensors.SensorWorker
 import io.homeassistant.companion.android.common.util.CheckLocalNetworkPermissionUseCase
 import io.homeassistant.companion.android.common.util.SdkVersion
@@ -197,12 +201,15 @@ class LaunchActivity : AppCompatActivity() {
             HATheme {
                 val navController = rememberNavController()
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-                val isFullScreen by viewModel.isFullScreen.collectAsStateWithLifecycle()
+                val systemBars by viewModel.systemBars.collectAsStateWithLifecycle()
+                val forcedBrightness by viewModel.forcedBrightness.collectAsStateWithLifecycle()
                 val isAppLocked by viewModel.isAppLocked.collectAsStateWithLifecycle()
                 val hazeState = rememberHazeState()
                 val snackbarHostState = remember { SnackbarHostState() }
 
-                FullscreenEffect(isFullScreen = isFullScreen)
+                SystemBarsEffect(systemBars = systemBars)
+
+                ForcedBrightnessEffect(brightness = forcedBrightness)
 
                 MissingPlayServicesNotice(
                     isMissingRequiredPlayServices = playServicesAvailability.isMissingRequiredPlayServices(),
@@ -307,34 +314,33 @@ private fun AppLockEffect(isAppLocked: Boolean, onAuthSucceeded: () -> Unit) {
 }
 
 @Composable
-private fun FullscreenEffect(isFullScreen: Boolean) {
+private fun SystemBarsEffect(systemBars: SystemBars) {
     val view = LocalView.current
     val window = LocalActivity.current?.window ?: return
     val controller = remember(window, view) { WindowInsetsControllerCompat(window, view) }
 
-    // Applies the state immediately (the effect re-runs whenever [isFullScreen] changes) and,
-    // while fullscreen, re-applies it every time the window regains focus. The system can
-    // transiently restore the system bars when focus is lost — a dialog, the notification
-    // shade, or the recents switcher — so re-hiding on focus regain keeps the frontend in
-    // fullscreen.
-    DisposableEffect(view, isFullScreen) {
-        fun applyFullscreen() {
-            if (isFullScreen) {
+    // Applies the state immediately (the effect re-runs whenever [systemBars] changes) and,
+    // while any bar is hidden, re-applies it every time the window regains focus. The system can
+    // transiently restore a hidden bar when focus is lost — a dialog, the notification shade, or
+    // the recents switcher — so re-hiding on focus regain keeps it away.
+    DisposableEffect(view, systemBars) {
+        fun applySystemBars() {
+            if (systemBars.anyHidden) {
                 controller.systemBarsBehavior =
                     WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                controller.hide(systemBars())
-            } else {
-                controller.show(systemBars())
             }
+            controller.setHidden(statusBars(), hidden = systemBars.statusBarHidden)
+            controller.setHidden(navigationBars(), hidden = systemBars.navigationBarHidden)
         }
 
-        applyFullscreen()
+        applySystemBars()
 
         val focusListener = ViewTreeObserver.OnWindowFocusChangeListener { hasFocus ->
-            // Only re-hide on focus regain while fullscreen. Outside fullscreen the bars are
-            // already shown, so reacting to every focus change here would be redundant work.
-            if (hasFocus && isFullScreen) {
-                applyFullscreen()
+            // Only re-apply on focus regain while a bar is hidden. With every bar shown there is
+            // nothing for the system to have restored, so reacting to focus changes would be
+            // redundant work.
+            if (hasFocus && systemBars.anyHidden) {
+                applySystemBars()
             }
         }
         val viewTreeObserver = view.viewTreeObserver
@@ -344,6 +350,42 @@ private fun FullscreenEffect(isFullScreen: Boolean) {
             viewTreeObserver.removeOnWindowFocusChangeListener(focusListener)
         }
     }
+}
+
+/**
+ * Forces the window's screen brightness to [brightness] while kiosk mode asks for one, and hands
+ * the display back to the system when it stops or the activity goes away.
+ *
+ * The override lives on the activity window rather than in the system's brightness setting, so it
+ * needs no permission, applies only while the app is in front, and cannot leave the device stuck at
+ * a kiosk brightness once the app is gone.
+ */
+@Composable
+private fun ForcedBrightnessEffect(brightness: KioskBrightness?) {
+    val window = LocalActivity.current?.window ?: return
+
+    DisposableEffect(window, brightness) {
+        window.setBrightnessOverride(brightness?.value ?: BRIGHTNESS_OVERRIDE_NONE)
+        onDispose {
+            window.setBrightnessOverride(BRIGHTNESS_OVERRIDE_NONE)
+        }
+    }
+}
+
+/**
+ * Applies [value] as this window's screen brightness, where [BRIGHTNESS_OVERRIDE_NONE] returns the
+ * decision to the system.
+ *
+ * The attributes have to be read, changed, and assigned back: assigning is what makes the window
+ * manager pick the change up.
+ */
+private fun Window.setBrightnessOverride(value: Float) {
+    attributes = attributes.apply { screenBrightness = value }
+}
+
+/** Hides or shows the insets of [types]. */
+private fun WindowInsetsControllerCompat.setHidden(types: Int, hidden: Boolean) {
+    if (hidden) hide(types) else show(types)
 }
 
 @Composable

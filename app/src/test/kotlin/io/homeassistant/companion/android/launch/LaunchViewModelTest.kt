@@ -7,6 +7,8 @@ import androidx.work.WorkManager
 import io.homeassistant.companion.android.applock.AppLockStateManager
 import io.homeassistant.companion.android.automotive.navigation.AutomotiveRoute
 import io.homeassistant.companion.android.common.data.authentication.SessionState
+import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
+import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.common.data.network.NetworkState
 import io.homeassistant.companion.android.common.data.network.NetworkStatusMonitor
 import io.homeassistant.companion.android.common.data.prefs.PrefsRepository
@@ -17,6 +19,8 @@ import io.homeassistant.companion.android.database.server.ServerSessionInfo
 import io.homeassistant.companion.android.database.server.ServerUserInfo
 import io.homeassistant.companion.android.frontend.navigation.FrontendRoute
 import io.homeassistant.companion.android.frontend.navigation.FrontendTarget
+import io.homeassistant.companion.android.kiosk.FakeKioskSettingsRepository
+import io.homeassistant.companion.android.kiosk.ObserveKioskStateUseCase
 import io.homeassistant.companion.android.onboarding.OnboardingRoute
 import io.homeassistant.companion.android.onboarding.WearOnboardingRoute
 import io.homeassistant.companion.android.testing.unit.MainDispatcherJUnit5Extension
@@ -52,6 +56,7 @@ class LaunchViewModelTest {
 
     private val workManager: WorkManager = mockk()
     private val appLockStateManager: AppLockStateManager = mockk(relaxed = true)
+    private val kioskSettingsRepository = FakeKioskSettingsRepository()
 
     private lateinit var viewModel: LaunchViewModel
 
@@ -68,6 +73,7 @@ class LaunchViewModelTest {
             networkStatusMonitor,
             prefsRepository,
             appLockStateManager,
+            ObserveKioskStateUseCase(kioskSettingsRepository),
             hasLocationTrackingSupport,
             isAutomotive,
             isFullFlavor,
@@ -578,35 +584,35 @@ class LaunchViewModelTest {
     }
 
     @Test
-    fun `Given fullscreen enabled when observed then isFullScreen is true`() = runTest {
+    fun `Given fullscreen enabled when observed then both system bars are hidden`() = runTest {
         fullScreenEnabledFlow.value = true
         createViewModel()
         advanceUntilIdle()
 
-        assertTrue(viewModel.isFullScreen.value)
+        assertEquals(SystemBars.HIDDEN, viewModel.systemBars.value)
     }
 
     @Test
-    fun `Given fullscreen disabled when observed then isFullScreen is false`() = runTest {
+    fun `Given fullscreen disabled when observed then both system bars are visible`() = runTest {
         fullScreenEnabledFlow.value = false
         createViewModel()
         advanceUntilIdle()
 
-        assertFalse(viewModel.isFullScreen.value)
+        assertEquals(SystemBars.VISIBLE, viewModel.systemBars.value)
     }
 
     @Test
-    fun `Given fullscreen preference changes then isFullScreen updates reactively`() = runTest {
+    fun `Given fullscreen preference changes then systemBars updates reactively`() = runTest {
         fullScreenEnabledFlow.value = false
         createViewModel()
         advanceUntilIdle()
 
-        assertFalse(viewModel.isFullScreen.value)
+        assertEquals(SystemBars.VISIBLE, viewModel.systemBars.value)
 
         fullScreenEnabledFlow.value = true
         advanceUntilIdle()
 
-        assertTrue(viewModel.isFullScreen.value)
+        assertEquals(SystemBars.HIDDEN, viewModel.systemBars.value)
     }
 
     @ParameterizedTest
@@ -649,7 +655,7 @@ class LaunchViewModelTest {
     }
 
     @Test
-    fun `Given fullscreen preference off when fullscreen is requested then isFullScreen is true`() = runTest {
+    fun `Given fullscreen preference off when fullscreen is requested then both system bars are hidden`() = runTest {
         fullScreenEnabledFlow.value = false
         createViewModel()
         advanceUntilIdle()
@@ -657,11 +663,11 @@ class LaunchViewModelTest {
         viewModel.onFullscreenRequested(fullscreen = true)
         advanceUntilIdle()
 
-        assertTrue(viewModel.isFullScreen.value)
+        assertEquals(SystemBars.HIDDEN, viewModel.systemBars.value)
     }
 
     @Test
-    fun `Given fullscreen preference off when fullscreen request is cleared then isFullScreen is false`() = runTest {
+    fun `Given fullscreen preference off when fullscreen request is cleared then both system bars are visible`() = runTest {
         fullScreenEnabledFlow.value = false
         createViewModel()
         viewModel.onFullscreenRequested(fullscreen = true)
@@ -670,11 +676,11 @@ class LaunchViewModelTest {
         viewModel.onFullscreenRequested(fullscreen = false)
         advanceUntilIdle()
 
-        assertFalse(viewModel.isFullScreen.value)
+        assertEquals(SystemBars.VISIBLE, viewModel.systemBars.value)
     }
 
     @Test
-    fun `Given fullscreen preference on when fullscreen request is cleared then isFullScreen stays true`() = runTest {
+    fun `Given fullscreen preference on when fullscreen request is cleared then both bars stay hidden`() = runTest {
         fullScreenEnabledFlow.value = true
         createViewModel()
         viewModel.onFullscreenRequested(fullscreen = true)
@@ -683,11 +689,114 @@ class LaunchViewModelTest {
         viewModel.onFullscreenRequested(fullscreen = false)
         advanceUntilIdle()
 
-        assertTrue(viewModel.isFullScreen.value)
+        assertEquals(SystemBars.HIDDEN, viewModel.systemBars.value)
     }
 
     @Test
-    fun `Given fullscreen request is active when preference turns off then isFullScreen stays true`() = runTest {
+    fun `Given kiosk hides the status bar when observed then only the status bar is hidden`() = runTest {
+        kioskSettingsRepository.setSettings(
+            KioskSettings(enabled = true, hideStatusBar = true),
+        )
+        createViewModel()
+        advanceUntilIdle()
+
+        assertEquals(SystemBars(statusBarHidden = true, navigationBarHidden = false), viewModel.systemBars.value)
+    }
+
+    @Test
+    fun `Given kiosk mode is on but hides no bar when observed then both system bars are visible`() = runTest {
+        kioskSettingsRepository.setSettings(KioskSettings(enabled = true))
+        createViewModel()
+        advanceUntilIdle()
+
+        assertEquals(SystemBars.VISIBLE, viewModel.systemBars.value)
+    }
+
+    @Test
+    fun `Given kiosk mode is disabled when it is configured to hide both bars then they stay visible`() = runTest {
+        kioskSettingsRepository.setSettings(
+            KioskSettings(enabled = false, hideStatusBar = true, hideNavigationBar = true),
+        )
+        createViewModel()
+        advanceUntilIdle()
+
+        assertEquals(SystemBars.VISIBLE, viewModel.systemBars.value)
+    }
+
+    @Test
+    fun `Given fullscreen is enabled when kiosk hides no bar then both bars stay hidden`() = runTest {
+        fullScreenEnabledFlow.value = true
+        kioskSettingsRepository.setSettings(KioskSettings(enabled = true))
+        createViewModel()
+        advanceUntilIdle()
+
+        assertEquals(SystemBars.HIDDEN, viewModel.systemBars.value)
+    }
+
+    @Test
+    fun `Given kiosk mode is enabled later then systemBars updates reactively`() = runTest {
+        createViewModel()
+        advanceUntilIdle()
+        assertEquals(SystemBars.VISIBLE, viewModel.systemBars.value)
+
+        kioskSettingsRepository.setSettings(
+            KioskSettings(enabled = true, hideNavigationBar = true),
+        )
+        advanceUntilIdle()
+
+        assertEquals(SystemBars(statusBarHidden = false, navigationBarHidden = true), viewModel.systemBars.value)
+    }
+
+    @Test
+    fun `Given kiosk mode is disabled when observed then no brightness is forced`() = runTest {
+        kioskSettingsRepository.setSettings(
+            KioskSettings(enabled = false, brightness = KioskBrightness.fromPercent(10)),
+        )
+        createViewModel()
+        advanceUntilIdle()
+
+        assertNull(viewModel.forcedBrightness.value)
+    }
+
+    @Test
+    fun `Given kiosk mode is enabled without a chosen brightness then the system keeps control of it`() = runTest {
+        kioskSettingsRepository.setSettings(KioskSettings(enabled = true))
+        createViewModel()
+        advanceUntilIdle()
+
+        assertNull(viewModel.forcedBrightness.value)
+    }
+
+    @Test
+    fun `Given kiosk mode is enabled when observed then its brightness is forced`() = runTest {
+        kioskSettingsRepository.setSettings(
+            KioskSettings(enabled = true, brightness = KioskBrightness.fromPercent(25)),
+        )
+        createViewModel()
+        advanceUntilIdle()
+
+        assertEquals(KioskBrightness.fromPercent(25), viewModel.forcedBrightness.value)
+    }
+
+    @Test
+    fun `Given kiosk mode is turned off then the forced brightness is released`() = runTest {
+        kioskSettingsRepository.setSettings(
+            KioskSettings(enabled = true, brightness = KioskBrightness.fromPercent(25)),
+        )
+        createViewModel()
+        advanceUntilIdle()
+        assertEquals(KioskBrightness.fromPercent(25), viewModel.forcedBrightness.value)
+
+        kioskSettingsRepository.setSettings(
+            KioskSettings(enabled = false, brightness = KioskBrightness.fromPercent(25)),
+        )
+        advanceUntilIdle()
+
+        assertNull(viewModel.forcedBrightness.value)
+    }
+
+    @Test
+    fun `Given fullscreen request is active when preference turns off then both bars stay hidden`() = runTest {
         fullScreenEnabledFlow.value = true
         createViewModel()
         viewModel.onFullscreenRequested(fullscreen = true)
@@ -696,7 +805,7 @@ class LaunchViewModelTest {
         fullScreenEnabledFlow.value = false
         advanceUntilIdle()
 
-        assertTrue(viewModel.isFullScreen.value)
+        assertEquals(SystemBars.HIDDEN, viewModel.systemBars.value)
     }
 
     @Test

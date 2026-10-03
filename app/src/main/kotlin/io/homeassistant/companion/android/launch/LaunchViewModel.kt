@@ -12,6 +12,7 @@ import io.homeassistant.companion.android.BuildConfig
 import io.homeassistant.companion.android.applock.AppLockStateManager
 import io.homeassistant.companion.android.automotive.navigation.AutomotiveRoute
 import io.homeassistant.companion.android.common.data.authentication.SessionState
+import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
 import io.homeassistant.companion.android.common.data.network.NetworkState
 import io.homeassistant.companion.android.common.data.network.NetworkStatusMonitor
 import io.homeassistant.companion.android.common.data.prefs.PrefsRepository
@@ -22,6 +23,8 @@ import io.homeassistant.companion.android.di.qualifiers.IsAutomotive
 import io.homeassistant.companion.android.di.qualifiers.LocationTrackingSupport
 import io.homeassistant.companion.android.frontend.navigation.FrontendRoute
 import io.homeassistant.companion.android.frontend.navigation.FrontendTarget
+import io.homeassistant.companion.android.kiosk.KioskState
+import io.homeassistant.companion.android.kiosk.ObserveKioskStateUseCase
 import io.homeassistant.companion.android.onboarding.OnboardingRoute
 import io.homeassistant.companion.android.onboarding.WearOnboardingRoute
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,8 +33,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
@@ -78,6 +83,7 @@ internal class LaunchViewModel @VisibleForTesting constructor(
     private val networkStatusMonitor: NetworkStatusMonitor,
     private val prefsRepository: PrefsRepository,
     private val appLockStateManager: AppLockStateManager,
+    observeKioskState: ObserveKioskStateUseCase,
     private val hasLocationTrackingSupport: Boolean,
     isAutomotive: Boolean,
     isFullFlavor: Boolean,
@@ -91,6 +97,7 @@ internal class LaunchViewModel @VisibleForTesting constructor(
         networkStatusMonitor: NetworkStatusMonitor,
         prefsRepository: PrefsRepository,
         appLockStateManager: AppLockStateManager,
+        observeKioskState: ObserveKioskStateUseCase,
         @LocationTrackingSupport hasLocationTrackingSupport: Boolean,
         @IsAutomotive isAutomotive: Boolean,
     ) : this(
@@ -100,6 +107,7 @@ internal class LaunchViewModel @VisibleForTesting constructor(
         networkStatusMonitor,
         prefsRepository,
         appLockStateManager,
+        observeKioskState,
         hasLocationTrackingSupport,
         isAutomotive = isAutomotive,
         isFullFlavor = BuildConfig.FLAVOR == "full",
@@ -120,17 +128,36 @@ internal class LaunchViewModel @VisibleForTesting constructor(
     private val fullscreenRequested = MutableStateFlow(false)
 
     /**
-     * Emits whether the app should currently be in fullscreen mode.
-     *
-     * Combines the user's fullscreen preference with temporary fullscreen requests from the
-     * frontend (e.g. ExoPlayer entering fullscreen) via a logical OR. The preference therefore
-     * takes priority: while it is enabled, a `false` request cannot leave fullscreen.
+     * The kiosk configuration in effect, shared by everything below that reacts to it so the
+     * stored settings are read once per change rather than once per consumer.
      */
-    val isFullScreen: StateFlow<Boolean> = combine(
+    private val kioskState: StateFlow<KioskState> =
+        observeKioskState().stateIn(viewModelScope, SharingStarted.Eagerly, initialValue = KioskState.Inactive)
+
+    /**
+     * Emits which system bars the window should currently hide.
+     *
+     * Fullscreen — the user's preference, or a temporary request from the frontend such as
+     * ExoPlayer entering fullscreen — hides both bars and takes priority, so while it is on, a
+     * kiosk configuration that hides neither bar cannot bring them back. Outside fullscreen the
+     * bars follow kiosk mode, which hides each of them independently.
+     */
+    val systemBars: StateFlow<SystemBars> = combine(
         flow { emitAll(prefsRepository.fullScreenEnabledFlow()) },
         fullscreenRequested,
-    ) { preference, requested -> preference || requested }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, initialValue = false)
+        kioskState,
+    ) { preference, requested, state ->
+        if (preference || requested) SystemBars.HIDDEN else state.toSystemBars()
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, initialValue = SystemBars.VISIBLE)
+
+    /**
+     * Emits the brightness kiosk mode forces on the window, or `null` when the display's
+     * brightness is the system's and the user's to decide.
+     */
+    val forcedBrightness: StateFlow<KioskBrightness?> = kioskState
+        .map { it.forcedBrightness }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, initialValue = null)
 
     private val _isAppLocked = MutableStateFlow(false)
     val isAppLocked: StateFlow<Boolean> = _isAppLocked.asStateFlow()
@@ -335,3 +362,9 @@ internal class LaunchViewModel @VisibleForTesting constructor(
 internal interface LaunchViewModelFactory {
     fun create(initialDeepLink: LaunchActivity.DeepLink?): LaunchViewModel
 }
+
+/** The system bars kiosk mode asks the window to hide. */
+private fun KioskState.toSystemBars(): SystemBars = SystemBars(
+    statusBarHidden = hidesStatusBar,
+    navigationBarHidden = hidesNavigationBar,
+)
