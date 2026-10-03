@@ -1538,6 +1538,17 @@
     <string name="learn_more">Learn more</string>
     <string name="default_assistant_required">Home Assistant must be your default assistant to perform %s.</string>
     <string name="hidden_entity">Hidden entity</string>
+    <string name="kiosk_title">Kiosk mode</string>
+    <string name="kiosk_summary">Turn this device into a wall dashboard</string>
+    <string name="kiosk_enabled">Kiosk mode</string>
+    <string name="kiosk_enabled_summary">Run this device as a dedicated dashboard.</string>
+    <string name="kiosk_display_title">Display</string>
+    <string name="kiosk_display_footer">These apply only while kiosk mode is on. Hidden system bars can still be brought back by swiping from the edge of the screen.</string>
+    <string name="kiosk_hide_status_bar">Hide the status bar</string>
+    <string name="kiosk_hide_navigation_bar">Hide the navigation bar</string>
+    <string name="kiosk_brightness">Screen brightness</string>
+    <string name="kiosk_brightness_system">Adjusted by the system</string>
+    <string name="kiosk_brightness_percent">%1$d%%</string>
     <string name="kiosk_screensaver_clock_description">Screensaver showing %1$s on %2$s. Touch to return to the dashboard.</string>
     <string name="kiosk_screensaver_blank_description">Screensaver. Touch to return to the dashboard.</string>
 </resources>

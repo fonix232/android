@@ -44,6 +44,7 @@ import io.homeassistant.companion.android.settings.assist.DefaultAssistantManage
 import io.homeassistant.companion.android.settings.controls.ManageControlsSettingsFragment
 import io.homeassistant.companion.android.settings.developer.DeveloperSettingsFragment
 import io.homeassistant.companion.android.settings.gestures.GesturesFragment
+import io.homeassistant.companion.android.settings.kiosk.KioskSettingsFragment
 import io.homeassistant.companion.android.settings.language.LanguagesProvider
 import io.homeassistant.companion.android.settings.license.LicensesFragment
 import io.homeassistant.companion.android.settings.notification.NotificationChannelFragment
@@ -189,6 +190,14 @@ class SettingsFragment(
             return@setOnPreferenceClickListener true
         }
 
+        findPreference<Preference>("kiosk")?.setOnPreferenceClickListener {
+            parentFragmentManager.commit {
+                replace(R.id.content, KioskSettingsFragment::class.java, null)
+                addToBackStack(getString(commonR.string.kiosk_title))
+            }
+            return@setOnPreferenceClickListener true
+        }
+
         findPreference<ListPreference>("page_zoom")?.let {
             // The list of percentages for iOS/Android should match
             // https://github.com/home-assistant/iOS/blob/ff66bbf2e3f9add0abb0b492499b81e824db36ed/Sources/Shared/Settings/SettingsStore.swift#L108
@@ -202,6 +211,10 @@ class SettingsFragment(
         val isAutomotive = requireContext().isAutomotive()
 
         findPreference<PreferenceCategory>("assist")?.isVisible = !isAutomotive
+
+        // Kiosk mode turns the device into a wall dashboard, which is not a thing a car's head
+        // unit does; its window chrome and brightness are the vehicle's to control.
+        findPreference<Preference>("kiosk")?.isVisible = !isAutomotive
 
         findPreference<PreferenceCategory>("widgets")?.isVisible = !QuestUtil.isQuest && !isAutomotive
         findPreference<Preference>("manage_widgets")?.setOnPreferenceClickListener {
