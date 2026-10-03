@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Parcelable
+import android.view.KeyEvent
 import android.view.ViewTreeObserver
 import android.view.Window
 import android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
@@ -26,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.core.content.IntentCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowInsetsCompat.Type.navigationBars
@@ -50,6 +52,7 @@ import io.homeassistant.companion.android.common.sensors.SensorWorker
 import io.homeassistant.companion.android.common.util.CheckLocalNetworkPermissionUseCase
 import io.homeassistant.companion.android.common.util.SdkVersion
 import io.homeassistant.companion.android.frontend.navigation.FrontendTarget
+import io.homeassistant.companion.android.kiosk.screensaver.KioskScreensaverOverlay
 import io.homeassistant.companion.android.launch.applock.HazeLockOverlay
 import io.homeassistant.companion.android.sensors.SensorReceiver
 import io.homeassistant.companion.android.util.CheckLocationDisabledUseCase
@@ -203,6 +206,7 @@ class LaunchActivity : AppCompatActivity() {
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                 val systemBars by viewModel.systemBars.collectAsStateWithLifecycle()
                 val forcedBrightness by viewModel.forcedBrightness.collectAsStateWithLifecycle()
+                val screensaver by viewModel.screensaver.collectAsStateWithLifecycle()
                 val isAppLocked by viewModel.isAppLocked.collectAsStateWithLifecycle()
                 val hazeState = rememberHazeState()
                 val snackbarHostState = remember { SnackbarHostState() }
@@ -225,12 +229,24 @@ class LaunchActivity : AppCompatActivity() {
                     snackbarHostState = snackbarHostState,
                     onRequestFullscreen = viewModel::onFullscreenRequested,
                     onPipReadinessChanged = viewModel::onPipReadinessChanged,
-                    modifier = Modifier.hazeSource(hazeState),
+                    modifier = Modifier
+                        .hazeSource(hazeState)
+                        // A covered dashboard is out of reach for touch, so it has to be out of
+                        // reach for a screen reader too; otherwise TalkBack can press a control
+                        // the screensaver is hiding.
+                        .then(if (screensaver != null) Modifier.clearAndSetSemantics {} else Modifier),
                 )
 
                 // We don't apply the overlay on top of the dialogs
                 if (isAppLocked) {
                     HazeLockOverlay(hazeState)
+                }
+
+                // Above the lock overlay: while the app is locked the screensaver is the less
+                // revealing of the two, and the authentication prompt is a system dialog that sits
+                // over both regardless.
+                screensaver?.let {
+                    KioskScreensaverOverlay(state = it, onDismiss = viewModel::onUserInteraction)
                 }
 
                 when (uiState) {
@@ -252,8 +268,36 @@ class LaunchActivity : AppCompatActivity() {
         viewModel.refreshAppLockState()
     }
 
+    // Android calls this for the first touch of a gesture and for every key event, which is
+    // exactly the "someone is here" signal the kiosk screensaver needs, and it arrives before the
+    // event reaches the content — so the touch that dismisses the screensaver is also the one that
+    // the screensaver overlay swallows.
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        viewModel.onUserInteraction()
+    }
+
+    /**
+     * Dismisses the screensaver on a key press, and consumes that press.
+     *
+     * The overlay swallows touches, but key events are dispatched past it: without this, the press
+     * that wakes the device also activates whatever had focus on the dashboard, or navigates the
+     * frontend back. The first press only dismisses.
+     */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (viewModel.screensaver.value != null) {
+            viewModel.onUserInteraction()
+            return true
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     override fun onResume() {
         super.onResume()
+        // Coming back to the app counts as the user being here. Without this, a device left alone
+        // longer than the idle timeout would come back to the screensaver already covering the
+        // dashboard, because the idle countdown resumes from the last interaction.
+        viewModel.onUserInteraction()
         SensorWorker.start(this)
         lifecycleScope.launch {
             WebsocketManager.start(this@LaunchActivity)

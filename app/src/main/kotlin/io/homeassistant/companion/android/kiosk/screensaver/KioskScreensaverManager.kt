@@ -1,0 +1,95 @@
+package io.homeassistant.companion.android.kiosk.screensaver
+
+import dagger.hilt.android.scopes.ViewModelScoped
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
+import io.homeassistant.companion.android.kiosk.KioskScreensaver
+import io.homeassistant.companion.android.kiosk.ObserveKioskStateUseCase
+import javax.inject.Inject
+import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.nanoseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+
+/**
+ * What the screensaver should currently show.
+ *
+ * [now] is the instant the clock screensaver displays; formatting it for the locale is the UI's job.
+ */
+internal data class KioskScreensaverUiState(val mode: KioskScreensaverMode, val now: Instant)
+
+/**
+ * Decides when the kiosk screensaver covers the dashboard, and keeps its clock current while it
+ * does.
+ *
+ * The device counts as idle once [onUserInteraction] has not been called for the configured idle
+ * timeout.
+ */
+@OptIn(ExperimentalTime::class, ExperimentalCoroutinesApi::class)
+@ViewModelScoped
+internal class KioskScreensaverManager @Inject constructor(
+    private val observeKioskState: ObserveKioskStateUseCase,
+    private val clock: Clock,
+) {
+
+    private val lastInteraction = MutableStateFlow(clock.now())
+
+    /** Records that the user is here, which hides the screensaver and restarts the idle countdown. */
+    fun onUserInteraction() {
+        lastInteraction.value = clock.now()
+    }
+
+    /**
+     * Emits the screensaver to show, or `null` while the dashboard should stay visible.
+     *
+     * Once it is showing, the state re-emits on each minute boundary rather than on a fixed
+     * interval, so the displayed time changes when the minute does instead of up to a minute late.
+     */
+    fun screensaverFlow(): Flow<KioskScreensaverUiState?> = observeKioskState()
+        .map { it.screensaver }
+        .distinctUntilChanged()
+        .flatMapLatest { screensaver ->
+            if (screensaver == null) flowOf(null) else idleFlow(screensaver)
+        }
+        .distinctUntilChanged()
+
+    /**
+     * Emits `null` until [screensaver]'s idle timeout passes without an interaction, then the
+     * screensaver state, refreshed on every minute boundary.
+     */
+    private fun idleFlow(screensaver: KioskScreensaver): Flow<KioskScreensaverUiState?> = lastInteraction
+        .flatMapLatest { interactedAt ->
+            flow {
+                emit(null)
+                delay(screensaver.idleTimeout - (clock.now() - interactedAt))
+                while (true) {
+                    val now = clock.now()
+                    emit(KioskScreensaverUiState(mode = screensaver.mode, now = now))
+                    delay(now.untilNextMinute())
+                }
+            }
+        }
+}
+
+/**
+ * How long until the start of the next minute.
+ *
+ * Waiting this long rather than a whole minute keeps the clock's displayed minute in step with the
+ * real one no matter when the screensaver appeared.
+ */
+@OptIn(ExperimentalTime::class)
+private fun Instant.untilNextMinute(): Duration =
+    1.minutes - (epochSeconds.mod(SECONDS_PER_MINUTE)).seconds - nanosecondsOfSecond.nanoseconds
+
+private const val SECONDS_PER_MINUTE = 60
