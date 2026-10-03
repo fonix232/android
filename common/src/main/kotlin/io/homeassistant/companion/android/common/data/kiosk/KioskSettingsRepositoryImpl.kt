@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 
 private const val PREF_KIOSK_ENABLED = "kiosk_enabled"
+private const val PREF_KIOSK_ACCEPT_REMOTE_COMMANDS = "kiosk_accept_remote_commands"
+private const val PREF_KIOSK_SHOW_REMOTE_COMMAND_CONFIRMATIONS = "kiosk_show_remote_command_confirmations"
 private const val PREF_KIOSK_HIDE_STATUS_BAR = "kiosk_hide_status_bar"
 private const val PREF_KIOSK_HIDE_NAVIGATION_BAR = "kiosk_hide_navigation_bar"
 private const val PREF_KIOSK_BRIGHTNESS_PERCENT = "kiosk_brightness_percent"
@@ -25,6 +27,11 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
         val idleTimeout = settings.screensaverIdleTimeout.coerceAtLeast(KioskSettings.MIN_SCREENSAVER_IDLE_TIMEOUT)
 
         localStorage.putBoolean(PREF_KIOSK_ENABLED, settings.enabled)
+        localStorage.putBoolean(PREF_KIOSK_ACCEPT_REMOTE_COMMANDS, settings.acceptRemoteCommands)
+        localStorage.putBoolean(
+            PREF_KIOSK_SHOW_REMOTE_COMMAND_CONFIRMATIONS,
+            settings.showRemoteCommandConfirmations,
+        )
         localStorage.putBoolean(PREF_KIOSK_HIDE_STATUS_BAR, settings.hideStatusBar)
         localStorage.putBoolean(PREF_KIOSK_HIDE_NAVIGATION_BAR, settings.hideNavigationBar)
         localStorage.putInt(PREF_KIOSK_BRIGHTNESS_PERCENT, settings.brightness?.toPercent())
@@ -36,6 +43,8 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
         emitAll(
             localStorage.observeChanges(
                 PREF_KIOSK_ENABLED,
+                PREF_KIOSK_ACCEPT_REMOTE_COMMANDS,
+                PREF_KIOSK_SHOW_REMOTE_COMMAND_CONFIRMATIONS,
                 PREF_KIOSK_HIDE_STATUS_BAR,
                 PREF_KIOSK_HIDE_NAVIGATION_BAR,
                 PREF_KIOSK_BRIGHTNESS_PERCENT,
@@ -50,6 +59,11 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
         val storedTimeoutSeconds = localStorage.getLong(PREF_KIOSK_SCREENSAVER_IDLE_TIMEOUT_SECONDS)
         return KioskSettings(
             enabled = localStorage.getBoolean(PREF_KIOSK_ENABLED),
+            // These two default to true, so an absent value cannot go through getBoolean, which
+            // reports false for anything it has not stored.
+            acceptRemoteCommands = localStorage.getBooleanOrNull(PREF_KIOSK_ACCEPT_REMOTE_COMMANDS) ?: true,
+            showRemoteCommandConfirmations =
+            localStorage.getBooleanOrNull(PREF_KIOSK_SHOW_REMOTE_COMMAND_CONFIRMATIONS) ?: true,
             hideStatusBar = localStorage.getBoolean(PREF_KIOSK_HIDE_STATUS_BAR),
             hideNavigationBar = localStorage.getBoolean(PREF_KIOSK_HIDE_NAVIGATION_BAR),
             brightness = KioskBrightness.fromPercent(localStorage.getInt(PREF_KIOSK_BRIGHTNESS_PERCENT)),

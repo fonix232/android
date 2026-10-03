@@ -1,5 +1,6 @@
 package io.homeassistant.companion.android.settings.kiosk
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -52,6 +53,8 @@ internal fun KioskSettingsScreen(
     KioskSettingsContent(
         viewState = viewState,
         onEnabledChanged = viewModel::onEnabledChanged,
+        onAcceptRemoteCommandsChanged = viewModel::onAcceptRemoteCommandsChanged,
+        onShowRemoteCommandConfirmationsChanged = viewModel::onShowRemoteCommandConfirmationsChanged,
         onHideStatusBarChanged = viewModel::onHideStatusBarChanged,
         onHideNavigationBarChanged = viewModel::onHideNavigationBarChanged,
         onBrightnessChanged = viewModel::onBrightnessChanged,
@@ -65,6 +68,8 @@ internal fun KioskSettingsScreen(
 internal fun KioskSettingsContent(
     viewState: KioskSettingsViewState,
     onEnabledChanged: (Boolean) -> Unit,
+    onAcceptRemoteCommandsChanged: (Boolean) -> Unit,
+    onShowRemoteCommandConfirmationsChanged: (Boolean) -> Unit,
     onHideStatusBarChanged: (Boolean) -> Unit,
     onHideNavigationBarChanged: (Boolean) -> Unit,
     onBrightnessChanged: (KioskBrightnessOption) -> Unit,
@@ -87,27 +92,21 @@ internal fun KioskSettingsContent(
             )
         }
 
-        SectionHeader(stringResource(commonR.string.kiosk_display_title))
+        RemoteCommandsSection(
+            acceptRemoteCommands = viewState.acceptRemoteCommands,
+            showRemoteCommandConfirmations = viewState.showRemoteCommandConfirmations,
+            onAcceptRemoteCommandsChanged = onAcceptRemoteCommandsChanged,
+            onShowRemoteCommandConfirmationsChanged = onShowRemoteCommandConfirmationsChanged,
+        )
 
-        HASettingsCard {
-            Column(verticalArrangement = Arrangement.spacedBy(HADimens.SPACE4)) {
-                SwitchRow(
-                    title = stringResource(commonR.string.kiosk_hide_status_bar),
-                    subtitle = null,
-                    checked = viewState.hideStatusBar,
-                    onCheckedChange = onHideStatusBarChanged,
-                )
-                SwitchRow(
-                    title = stringResource(commonR.string.kiosk_hide_navigation_bar),
-                    subtitle = null,
-                    checked = viewState.hideNavigationBar,
-                    onCheckedChange = onHideNavigationBarChanged,
-                )
-                BrightnessRow(selected = viewState.brightness, onBrightnessChanged = onBrightnessChanged)
-            }
-        }
-
-        FooterText(stringResource(commonR.string.kiosk_display_footer))
+        DisplaySection(
+            hideStatusBar = viewState.hideStatusBar,
+            hideNavigationBar = viewState.hideNavigationBar,
+            brightness = viewState.brightness,
+            onHideStatusBarChanged = onHideStatusBarChanged,
+            onHideNavigationBarChanged = onHideNavigationBarChanged,
+            onBrightnessChanged = onBrightnessChanged,
+        )
 
         HASettingsCard {
             NavigationRow(
@@ -139,6 +138,72 @@ private fun NavigationRow(title: String, subtitle: String, onClick: () -> Unit) 
             color = LocalHAColorScheme.current.colorTextSecondary,
         )
     }
+}
+
+@Composable
+private fun RemoteCommandsSection(
+    acceptRemoteCommands: Boolean,
+    showRemoteCommandConfirmations: Boolean,
+    onAcceptRemoteCommandsChanged: (Boolean) -> Unit,
+    onShowRemoteCommandConfirmationsChanged: (Boolean) -> Unit,
+) {
+    SectionHeader(stringResource(commonR.string.kiosk_remote_commands_title))
+
+    HASettingsCard {
+        Column(verticalArrangement = Arrangement.spacedBy(HADimens.SPACE4)) {
+            SwitchRow(
+                title = stringResource(commonR.string.kiosk_accept_remote_commands),
+                subtitle = null,
+                checked = acceptRemoteCommands,
+                onCheckedChange = onAcceptRemoteCommandsChanged,
+            )
+
+            // Nothing arrives to confirm while the commands are refused, so the row that configures
+            // those confirmations goes away with them.
+            AnimatedVisibility(visible = acceptRemoteCommands) {
+                SwitchRow(
+                    title = stringResource(commonR.string.kiosk_show_remote_command_confirmations),
+                    subtitle = null,
+                    checked = showRemoteCommandConfirmations,
+                    onCheckedChange = onShowRemoteCommandConfirmationsChanged,
+                )
+            }
+        }
+    }
+
+    FooterText(stringResource(commonR.string.kiosk_remote_commands_footer))
+}
+
+@Composable
+private fun DisplaySection(
+    hideStatusBar: Boolean,
+    hideNavigationBar: Boolean,
+    brightness: KioskBrightnessOption,
+    onHideStatusBarChanged: (Boolean) -> Unit,
+    onHideNavigationBarChanged: (Boolean) -> Unit,
+    onBrightnessChanged: (KioskBrightnessOption) -> Unit,
+) {
+    SectionHeader(stringResource(commonR.string.kiosk_display_title))
+
+    HASettingsCard {
+        Column(verticalArrangement = Arrangement.spacedBy(HADimens.SPACE4)) {
+            SwitchRow(
+                title = stringResource(commonR.string.kiosk_hide_status_bar),
+                subtitle = null,
+                checked = hideStatusBar,
+                onCheckedChange = onHideStatusBarChanged,
+            )
+            SwitchRow(
+                title = stringResource(commonR.string.kiosk_hide_navigation_bar),
+                subtitle = null,
+                checked = hideNavigationBar,
+                onCheckedChange = onHideNavigationBarChanged,
+            )
+            BrightnessRow(selected = brightness, onBrightnessChanged = onBrightnessChanged)
+        }
+    }
+
+    FooterText(stringResource(commonR.string.kiosk_display_footer))
 }
 
 /**
@@ -243,6 +308,8 @@ private fun KioskSettingsContentPreview() {
                 brightness = KioskBrightnessOption.Fixed(PREVIEW_BRIGHTNESS_PERCENT),
             ),
             onEnabledChanged = {},
+            onAcceptRemoteCommandsChanged = {},
+            onShowRemoteCommandConfirmationsChanged = {},
             onHideStatusBarChanged = {},
             onHideNavigationBarChanged = {},
             onBrightnessChanged = {},

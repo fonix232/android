@@ -138,6 +138,25 @@ class KioskSettingsRepositoryImplTest {
     }
 
     @Test
+    fun `Given empty storage when getting settings then remote commands and their confirmations are on`() = runTest {
+        val settings = repository.getSettings()
+
+        assertTrue(settings.acceptRemoteCommands)
+        assertTrue(settings.showRemoteCommandConfirmations)
+    }
+
+    @Test
+    fun `Given remote commands are refused when getting settings then that survives the round-trip`() = runTest {
+        repository.setSettings(
+            KioskSettings(acceptRemoteCommands = false, showRemoteCommandConfirmations = false),
+        )
+
+        val settings = repository.getSettings()
+        assertFalse(settings.acceptRemoteCommands)
+        assertFalse(settings.showRemoteCommandConfirmations)
+    }
+
+    @Test
     fun `Given no stored brightness when getting settings then the system keeps control of it`() = runTest {
         repository.setSettings(KioskSettings(enabled = true, brightness = null))
 
