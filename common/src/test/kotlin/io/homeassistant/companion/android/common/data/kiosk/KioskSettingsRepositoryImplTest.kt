@@ -79,6 +79,7 @@ class KioskSettingsRepositoryImplTest {
     fun `Given stored settings when getting settings then the stored values are returned`() = runTest {
         val stored = KioskSettings(
             enabled = true,
+            requireAuthentication = true,
             hideStatusBar = true,
             hideNavigationBar = true,
             brightness = KioskBrightness.fromPercent(40),
