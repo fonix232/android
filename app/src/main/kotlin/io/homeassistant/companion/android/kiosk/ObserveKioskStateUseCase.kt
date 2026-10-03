@@ -29,6 +29,7 @@ internal class ObserveKioskStateUseCase @Inject constructor(
 /** Collapses the configured [KioskSettings] into the state that applies right now. */
 private fun KioskSettings.toKioskState(): KioskState = if (enabled) {
     KioskState.Active(
+        keepsScreenOn = keepScreenOn,
         hidesStatusBar = hideStatusBar,
         hidesNavigationBar = hideNavigationBar,
         forcedBrightness = brightness,

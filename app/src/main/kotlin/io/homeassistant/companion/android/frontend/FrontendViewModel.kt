@@ -52,6 +52,7 @@ import io.homeassistant.companion.android.frontend.navigation.FrontendTarget
 import io.homeassistant.companion.android.frontend.permissions.PermissionManager
 import io.homeassistant.companion.android.frontend.url.FrontendUrlManager
 import io.homeassistant.companion.android.frontend.url.UrlLoadResult
+import io.homeassistant.companion.android.kiosk.ObserveKioskStateUseCase
 import io.homeassistant.companion.android.util.HAWebChromeClient
 import io.homeassistant.companion.android.util.HAWebViewClient
 import io.homeassistant.companion.android.util.HAWebViewClientFactory
@@ -134,6 +135,7 @@ internal class FrontendViewModel @VisibleForTesting constructor(
     private val barcodeScannerHandler: FrontendBarcodeScannerHandler,
     private val matterThreadHandler: FrontendMatterThreadHandler,
     private val keyChainRepository: KeyChainRepository,
+    observeKioskState: ObserveKioskStateUseCase,
 ) : ViewModel(),
     FrontendConnectionErrorStateProvider {
 
@@ -159,6 +161,7 @@ internal class FrontendViewModel @VisibleForTesting constructor(
         barcodeScannerHandler: FrontendBarcodeScannerHandler,
         matterThreadHandler: FrontendMatterThreadHandler,
         keyChainRepository: KeyChainRepository,
+        observeKioskState: ObserveKioskStateUseCase,
     ) : this(
         initialServerId = savedStateHandle.toRoute<FrontendRoute>().serverId,
         initialTarget = savedStateHandle.toRoute<FrontendRoute>().target,
@@ -181,6 +184,7 @@ internal class FrontendViewModel @VisibleForTesting constructor(
         barcodeScannerHandler = barcodeScannerHandler,
         matterThreadHandler = matterThreadHandler,
         keyChainRepository = keyChainRepository,
+        observeKioskState = observeKioskState,
     )
 
     /**
@@ -405,8 +409,13 @@ internal class FrontendViewModel @VisibleForTesting constructor(
      * WebView is active. Exposed as a [StateFlow] so the screen can read the current value
      * synchronously when first attaching to the window and react to subsequent changes.
      */
-    val keepScreenOnEnabled: StateFlow<Boolean> = flow {
-        emitAll(prefsRepository.keepScreenOnFlow())
+    val keepScreenOnEnabled: StateFlow<Boolean> = combine(
+        flow { emitAll(prefsRepository.keepScreenOnFlow()) },
+        observeKioskState(),
+    ) { preference, kioskState ->
+        // Either reason is enough: a wall display wants to stay lit whether or not the user turned
+        // the app-wide preference on for their phone.
+        preference || kioskState.keepsScreenOn
     }.stateIn(viewModelScope, SharingStarted.Eagerly, initialValue = false)
 
     /**

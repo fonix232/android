@@ -12,6 +12,7 @@ private const val PREF_KIOSK_ENABLED = "kiosk_enabled"
 private const val PREF_KIOSK_REQUIRE_AUTHENTICATION = "kiosk_require_authentication"
 private const val PREF_KIOSK_ACCEPT_REMOTE_COMMANDS = "kiosk_accept_remote_commands"
 private const val PREF_KIOSK_SHOW_REMOTE_COMMAND_CONFIRMATIONS = "kiosk_show_remote_command_confirmations"
+private const val PREF_KIOSK_KEEP_SCREEN_ON = "kiosk_keep_screen_on"
 private const val PREF_KIOSK_HIDE_STATUS_BAR = "kiosk_hide_status_bar"
 private const val PREF_KIOSK_HIDE_NAVIGATION_BAR = "kiosk_hide_navigation_bar"
 private const val PREF_KIOSK_BRIGHTNESS_PERCENT = "kiosk_brightness_percent"
@@ -34,6 +35,7 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
             PREF_KIOSK_SHOW_REMOTE_COMMAND_CONFIRMATIONS,
             settings.showRemoteCommandConfirmations,
         )
+        localStorage.putBoolean(PREF_KIOSK_KEEP_SCREEN_ON, settings.keepScreenOn)
         localStorage.putBoolean(PREF_KIOSK_HIDE_STATUS_BAR, settings.hideStatusBar)
         localStorage.putBoolean(PREF_KIOSK_HIDE_NAVIGATION_BAR, settings.hideNavigationBar)
         localStorage.putInt(PREF_KIOSK_BRIGHTNESS_PERCENT, settings.brightness?.toPercent())
@@ -48,6 +50,7 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
                 PREF_KIOSK_REQUIRE_AUTHENTICATION,
                 PREF_KIOSK_ACCEPT_REMOTE_COMMANDS,
                 PREF_KIOSK_SHOW_REMOTE_COMMAND_CONFIRMATIONS,
+                PREF_KIOSK_KEEP_SCREEN_ON,
                 PREF_KIOSK_HIDE_STATUS_BAR,
                 PREF_KIOSK_HIDE_NAVIGATION_BAR,
                 PREF_KIOSK_BRIGHTNESS_PERCENT,
@@ -68,6 +71,7 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
             acceptRemoteCommands = localStorage.getBooleanOrNull(PREF_KIOSK_ACCEPT_REMOTE_COMMANDS) ?: true,
             showRemoteCommandConfirmations =
             localStorage.getBooleanOrNull(PREF_KIOSK_SHOW_REMOTE_COMMAND_CONFIRMATIONS) ?: true,
+            keepScreenOn = localStorage.getBoolean(PREF_KIOSK_KEEP_SCREEN_ON),
             hideStatusBar = localStorage.getBoolean(PREF_KIOSK_HIDE_STATUS_BAR),
             hideNavigationBar = localStorage.getBoolean(PREF_KIOSK_HIDE_NAVIGATION_BAR),
             brightness = KioskBrightness.fromPercent(localStorage.getInt(PREF_KIOSK_BRIGHTNESS_PERCENT)),

@@ -1557,6 +1557,7 @@
     <string name="kiosk_remote_commands_footer">Let automations control this kiosk by sending it a notification command. Turn confirmations off to have commands obeyed silently.</string>
     <string name="kiosk_display_title">Display</string>
     <string name="kiosk_display_footer">These apply only while kiosk mode is on. Hidden system bars can still be brought back by swiping from the edge of the screen.</string>
+    <string name="kiosk_keep_screen_on">Keep the screen on</string>
     <string name="kiosk_hide_status_bar">Hide the status bar</string>
     <string name="kiosk_hide_navigation_bar">Hide the navigation bar</string>
     <string name="kiosk_brightness">Screen brightness</string>

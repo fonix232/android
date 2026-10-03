@@ -66,6 +66,20 @@ class ObserveKioskStateUseCaseTest {
     }
 
     @Test
+    fun `Given kiosk keeps the screen on then the state says so only while kiosk is enabled`() = runTest {
+        repository.setSettings(KioskSettings(enabled = false, keepScreenOn = true))
+
+        observeKioskState().test {
+            assertFalse(awaitItem().keepsScreenOn)
+
+            repository.setSettings(KioskSettings(enabled = true, keepScreenOn = true))
+
+            assertTrue(awaitItem().keepsScreenOn)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `Given no configured brightness when kiosk is enabled then the system keeps control of it`() = runTest {
         repository.setSettings(KioskSettings(enabled = true, brightness = null))
 
@@ -100,6 +114,7 @@ class ObserveKioskStateUseCaseTest {
 
             assertEquals(
                 KioskState.Active(
+                    keepsScreenOn = false,
                     hidesStatusBar = false,
                     hidesNavigationBar = false,
                     forcedBrightness = null,
