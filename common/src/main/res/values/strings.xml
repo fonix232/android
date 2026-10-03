@@ -1542,6 +1542,9 @@
     <string name="kiosk_summary">Turn this device into a wall dashboard</string>
     <string name="kiosk_enabled">Kiosk mode</string>
     <string name="kiosk_enabled_summary">Run this device as a dedicated dashboard.</string>
+    <string name="sensor_name_kiosk">Kiosk mode sensors</string>
+    <string name="basic_sensor_name_kiosk_mode">Kiosk mode</string>
+    <string name="sensor_description_kiosk_mode">Whether kiosk mode is turned on, with how it is configured as attributes.</string>
     <string name="kiosk_remote_commands_title">Remote control</string>
     <string name="kiosk_accept_remote_commands">Accept commands from Home Assistant</string>
     <string name="kiosk_show_remote_command_confirmations">Confirm commands on screen</string>

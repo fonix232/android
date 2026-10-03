@@ -44,6 +44,9 @@ abstract class SensorModule {
     abstract fun bindDisplaySensorManager(impl: DisplaySensorManager): SensorManager
 
     @Binds @IntoSet
+    abstract fun bindKioskSensorManager(impl: KioskSensorManager): SensorManager
+
+    @Binds @IntoSet
     abstract fun bindKeyguardSensorManager(impl: KeyguardSensorManager): SensorManager
 
     @Binds @IntoSet
