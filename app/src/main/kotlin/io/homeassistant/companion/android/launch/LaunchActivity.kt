@@ -50,6 +50,7 @@ import io.homeassistant.companion.android.common.sensors.SensorWorker
 import io.homeassistant.companion.android.common.util.CheckLocalNetworkPermissionUseCase
 import io.homeassistant.companion.android.common.util.SdkVersion
 import io.homeassistant.companion.android.frontend.navigation.FrontendTarget
+import io.homeassistant.companion.android.kiosk.screensaver.KioskScreensaverOverlay
 import io.homeassistant.companion.android.launch.applock.HazeLockOverlay
 import io.homeassistant.companion.android.sensors.SensorReceiver
 import io.homeassistant.companion.android.util.CheckLocationDisabledUseCase
@@ -203,6 +204,7 @@ class LaunchActivity : AppCompatActivity() {
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                 val systemBars by viewModel.systemBars.collectAsStateWithLifecycle()
                 val forcedBrightness by viewModel.forcedBrightness.collectAsStateWithLifecycle()
+                val screensaver by viewModel.screensaver.collectAsStateWithLifecycle()
                 val isAppLocked by viewModel.isAppLocked.collectAsStateWithLifecycle()
                 val hazeState = rememberHazeState()
                 val snackbarHostState = remember { SnackbarHostState() }
@@ -233,6 +235,11 @@ class LaunchActivity : AppCompatActivity() {
                     HazeLockOverlay(hazeState)
                 }
 
+                // Above the lock overlay: while the app is locked the screensaver is the less
+                // revealing of the two, and the authentication prompt is a system dialog that sits
+                // over both regardless.
+                screensaver?.let { KioskScreensaverOverlay(state = it) }
+
                 when (uiState) {
                     LaunchUiState.NetworkUnavailable -> NetworkUnavailableDialog(onBackClick = ::finish)
                     LaunchUiState.WearUnsupported -> WearUnsupportedDialog(onBackClick = ::finish)
@@ -252,8 +259,21 @@ class LaunchActivity : AppCompatActivity() {
         viewModel.refreshAppLockState()
     }
 
+    // Android calls this for the first touch of a gesture and for every key event, which is
+    // exactly the "someone is here" signal the kiosk screensaver needs, and it arrives before the
+    // event reaches the content — so the touch that dismisses the screensaver is also the one that
+    // the screensaver overlay swallows.
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        viewModel.onUserInteraction()
+    }
+
     override fun onResume() {
         super.onResume()
+        // Coming back to the app counts as the user being here. Without this, a device left alone
+        // longer than the idle timeout would come back to the screensaver already covering the
+        // dashboard, because the idle countdown resumes from the last interaction.
+        viewModel.onUserInteraction()
         SensorWorker.start(this)
         lifecycleScope.launch {
             WebsocketManager.start(this@LaunchActivity)

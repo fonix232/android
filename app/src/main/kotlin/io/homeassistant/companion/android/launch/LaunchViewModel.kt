@@ -25,11 +25,15 @@ import io.homeassistant.companion.android.frontend.navigation.FrontendRoute
 import io.homeassistant.companion.android.frontend.navigation.FrontendTarget
 import io.homeassistant.companion.android.kiosk.KioskState
 import io.homeassistant.companion.android.kiosk.ObserveKioskStateUseCase
+import io.homeassistant.companion.android.kiosk.screensaver.KioskScreensaverManager
+import io.homeassistant.companion.android.kiosk.screensaver.KioskScreensaverUiState
 import io.homeassistant.companion.android.onboarding.OnboardingRoute
 import io.homeassistant.companion.android.onboarding.WearOnboardingRoute
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
@@ -83,6 +87,7 @@ internal class LaunchViewModel @VisibleForTesting constructor(
     private val networkStatusMonitor: NetworkStatusMonitor,
     private val prefsRepository: PrefsRepository,
     private val appLockStateManager: AppLockStateManager,
+    private val screensaverManager: KioskScreensaverManager,
     observeKioskState: ObserveKioskStateUseCase,
     private val hasLocationTrackingSupport: Boolean,
     isAutomotive: Boolean,
@@ -97,6 +102,7 @@ internal class LaunchViewModel @VisibleForTesting constructor(
         networkStatusMonitor: NetworkStatusMonitor,
         prefsRepository: PrefsRepository,
         appLockStateManager: AppLockStateManager,
+        screensaverManager: KioskScreensaverManager,
         observeKioskState: ObserveKioskStateUseCase,
         @LocationTrackingSupport hasLocationTrackingSupport: Boolean,
         @IsAutomotive isAutomotive: Boolean,
@@ -107,6 +113,7 @@ internal class LaunchViewModel @VisibleForTesting constructor(
         networkStatusMonitor,
         prefsRepository,
         appLockStateManager,
+        screensaverManager,
         observeKioskState,
         hasLocationTrackingSupport,
         isAutomotive = isAutomotive,
@@ -151,6 +158,16 @@ internal class LaunchViewModel @VisibleForTesting constructor(
     }.stateIn(viewModelScope, SharingStarted.Eagerly, initialValue = SystemBars.VISIBLE)
 
     /**
+     * Emits the screensaver covering the dashboard, or `null` while the dashboard is visible.
+     *
+     * Shared only while something collects it, unlike the window state above: a backgrounded app
+     * has no screen to cover, and keeping the countdown and its clock running there would burn
+     * wakeups for a screensaver nobody can see.
+     */
+    val screensaver: StateFlow<KioskScreensaverUiState?> = screensaverManager.screensaverFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SCREENSAVER_STOP_TIMEOUT), initialValue = null)
+
+    /**
      * Emits the brightness kiosk mode forces on the window, or `null` when the display's
      * brightness is the system's and the user's to decide.
      */
@@ -178,6 +195,11 @@ internal class LaunchViewModel @VisibleForTesting constructor(
             cleanupServers()
             handleInitialState(initialDeepLink)
         }
+    }
+
+    /** Reports that the user is interacting with the app, which keeps the screensaver away. */
+    fun onUserInteraction() {
+        screensaverManager.onUserInteraction()
     }
 
     /**
@@ -357,6 +379,12 @@ internal class LaunchViewModel @VisibleForTesting constructor(
         }
     }
 }
+
+/**
+ * How long the screensaver flow stays active after the last collector leaves, so a configuration
+ * change does not tear the countdown down and start it again.
+ */
+private val SCREENSAVER_STOP_TIMEOUT = 500.milliseconds
 
 @AssistedFactory
 internal interface LaunchViewModelFactory {
