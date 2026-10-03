@@ -83,7 +83,12 @@ class LaunchViewModelTest {
             networkStatusMonitor,
             prefsRepository,
             appLockStateManager,
-            KioskScreensaverManager(ObserveKioskStateUseCase(kioskSettingsRepository), KioskScreensaverController(), clock),
+            KioskScreensaverManager(
+                ObserveKioskStateUseCase(kioskSettingsRepository),
+                KioskScreensaverController(),
+                mockk(relaxed = true),
+                clock,
+            ),
             ObserveKioskStateUseCase(kioskSettingsRepository),
             hasLocationTrackingSupport,
             isAutomotive,

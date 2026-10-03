@@ -207,6 +207,15 @@ internal class LaunchViewModel @VisibleForTesting constructor(
     suspend fun observeScreensaverRequests() = screensaverManager.observeRequests()
 
     /**
+     * Listens for a sound loud enough to count as somebody being there, while collected.
+     *
+     * Collected from the activity so the microphone is open only while this screen is in the
+     * foreground, which is both what the setting's description promises and what keeps this clear
+     * of the background microphone restrictions.
+     */
+    suspend fun observeSoundWake() = screensaverManager.observeSoundWake()
+
+    /**
      * Whether kiosk mode wants the display kept awake.
      *
      * Held by the activity's window rather than by the frontend screen, so it survives navigating
