@@ -3,6 +3,7 @@ package io.homeassistant.companion.android.settings.kiosk
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.homeassistant.companion.android.common.data.kiosk.KioskAutoReloadInterval
 import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettingsRepository
@@ -54,6 +55,7 @@ internal data class KioskSettingsViewState(
     val requireAuthentication: Boolean = false,
     val acceptRemoteCommands: Boolean = true,
     val showRemoteCommandConfirmations: Boolean = true,
+    val autoReload: KioskAutoReloadInterval = KioskAutoReloadInterval.NEVER,
     val keepScreenOn: Boolean = false,
     val hideStatusBar: Boolean = false,
     val hideNavigationBar: Boolean = false,
@@ -94,6 +96,9 @@ internal class KioskSettingsViewModel @Inject constructor(
     fun onShowRemoteCommandConfirmationsChanged(show: Boolean) = update {
         it.copy(showRemoteCommandConfirmations = show)
     }
+
+    /** Chooses how often the dashboard reloads on its own. */
+    fun onAutoReloadChanged(interval: KioskAutoReloadInterval) = update { it.copy(autoReload = interval) }
 
     /** Chooses whether the display is kept awake while kiosk mode is on. */
     fun onKeepScreenOnChanged(keep: Boolean) = update { it.copy(keepScreenOn = keep) }
@@ -137,6 +142,7 @@ private fun KioskSettings.toViewState(unlocked: Boolean): KioskSettingsViewState
     requireAuthentication = requireAuthentication,
     acceptRemoteCommands = acceptRemoteCommands,
     showRemoteCommandConfirmations = showRemoteCommandConfirmations,
+    autoReload = autoReload,
     keepScreenOn = keepScreenOn,
     hideStatusBar = hideStatusBar,
     hideNavigationBar = hideNavigationBar,

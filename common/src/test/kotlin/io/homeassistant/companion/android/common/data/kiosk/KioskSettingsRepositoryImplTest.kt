@@ -122,6 +122,13 @@ class KioskSettingsRepositoryImplTest {
     }
 
     @Test
+    fun `Given an unknown stored reload interval when getting settings then it falls back to never`() = runTest {
+        storage.putString("kiosk_auto_reload", "every_fortnight")
+
+        assertEquals(KioskAutoReloadInterval.NEVER, repository.getSettings().autoReload)
+    }
+
+    @Test
     fun `Given an unknown stored screensaver mode when getting settings then it falls back to disabled`() = runTest {
         storage.putString("kiosk_screensaver_mode", "lava_lamp")
 

@@ -97,6 +97,8 @@ internal class KioskScreensaverManager @Inject constructor(
                 }
 
                 KioskScreensaverRequest.Hide -> onUserInteraction()
+                // Reloading the dashboard is the frontend's to honor, not the screensaver's.
+                KioskScreensaverRequest.Reload -> Unit
             }
         }
     }

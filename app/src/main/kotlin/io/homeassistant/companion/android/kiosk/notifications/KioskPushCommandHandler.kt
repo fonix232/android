@@ -45,6 +45,7 @@ class KioskPushCommandHandler @Inject constructor(
             // or uncover it now, leaving the configured timeout alone.
             KioskPushCommand.ShowScreensaver -> screensaverController.request(KioskScreensaverRequest.Show)
             KioskPushCommand.HideScreensaver -> screensaverController.request(KioskScreensaverRequest.Hide)
+            KioskPushCommand.Reload -> screensaverController.request(KioskScreensaverRequest.Reload)
         }
         return true
     }
