@@ -23,6 +23,8 @@ import io.homeassistant.companion.android.common.data.keychain.KeyChainRepositor
 import io.homeassistant.companion.android.common.data.keychain.KeyChainRepositoryImpl
 import io.homeassistant.companion.android.common.data.keychain.KeyStoreRepository
 import io.homeassistant.companion.android.common.data.keychain.KeyStoreRepositoryImpl
+import io.homeassistant.companion.android.common.data.kiosk.KioskSettingsRepository
+import io.homeassistant.companion.android.common.data.kiosk.KioskSettingsRepositoryImpl
 import io.homeassistant.companion.android.common.data.prefs.PrefsRepository
 import io.homeassistant.companion.android.common.data.prefs.PrefsRepositoryImpl
 import io.homeassistant.companion.android.common.data.prefs.WearPrefsRepository
@@ -36,6 +38,7 @@ import io.homeassistant.companion.android.common.util.tts.TextToSpeechClient
 import io.homeassistant.companion.android.di.qualifiers.NamedDeviceId
 import io.homeassistant.companion.android.di.qualifiers.NamedInstallId
 import io.homeassistant.companion.android.di.qualifiers.NamedIntegrationStorage
+import io.homeassistant.companion.android.di.qualifiers.NamedKioskStorage
 import io.homeassistant.companion.android.di.qualifiers.NamedLegacyChangelogPref
 import io.homeassistant.companion.android.di.qualifiers.NamedManufacturer
 import io.homeassistant.companion.android.di.qualifiers.NamedModel
@@ -102,6 +105,13 @@ internal abstract class DataModule {
         @Singleton
         fun providePrefsLocalStorage(@ApplicationContext appContext: Context): LocalStorage = LocalStorageImpl {
             appContext.getSharedPreferencesSuspend("themes_0")
+        }
+
+        @Provides
+        @NamedKioskStorage
+        @Singleton
+        fun provideKioskLocalStorage(@ApplicationContext appContext: Context): LocalStorage = LocalStorageImpl {
+            appContext.getSharedPreferencesSuspend("kiosk_0")
         }
 
         @Provides
@@ -175,6 +185,12 @@ internal abstract class DataModule {
     @Binds
     @Singleton
     internal abstract fun bindWearPrefsRepository(wearPrefsRepository: WearPrefsRepositoryImpl): WearPrefsRepository
+
+    @Binds
+    @Singleton
+    internal abstract fun bindKioskSettingsRepository(
+        kioskSettingsRepository: KioskSettingsRepositoryImpl,
+    ): KioskSettingsRepository
 
     @Binds
     @Singleton

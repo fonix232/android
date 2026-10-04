@@ -86,3 +86,8 @@ annotation class LocationTrackingSupport
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class IsAutomotive
+
+/** Qualifier for the [LocalStorage] holding the kiosk mode configuration. */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class NamedKioskStorage
