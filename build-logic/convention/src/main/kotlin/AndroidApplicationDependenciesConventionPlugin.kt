@@ -93,6 +93,7 @@ class AndroidApplicationDependenciesConventionPlugin : Plugin<Project> {
                     "implementation"(libs.reorderable)
                     "implementation"(libs.aboutlibraries.compose.m3)
 
+                    "implementation"(libs.bundles.camerax)
                     "implementation"(libs.zxing)
                     "implementation"(libs.improv)
 
