@@ -50,9 +50,9 @@ class KioskSettingsScreenTest {
                     onShowRemoteCommandConfirmationsChanged = {},
                     onSettingsEntryPositionChanged = {},
                     onSettingsEntryHiddenChanged = {},
-                    onServerChanged = {},
-                    onDashboardPathChanged = {},
+                    onDashboardSettingChanged = {},
                     onDisplaySettingChanged = displayChanges::add,
+                    onCameraStreamSettingChanged = {},
                     onScreensaverClick = {},
                 )
             }

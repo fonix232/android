@@ -29,15 +29,18 @@ internal fun DashboardSection(
     servers: List<KioskServerOption>,
     selectedServerId: Int?,
     dashboardPath: String,
-    onServerChanged: (Int?) -> Unit,
-    onDashboardPathChanged: (String) -> Unit,
+    onDashboardSettingChanged: (KioskDashboardSetting) -> Unit,
 ) {
     SectionHeader(stringResource(commonR.string.kiosk_dashboard_title))
 
     HASettingsCard {
         Column(verticalArrangement = Arrangement.spacedBy(HADimens.SPACE4)) {
             if (servers.isNotEmpty()) {
-                ServerRow(servers = servers, selectedServerId = selectedServerId, onServerChanged = onServerChanged)
+                ServerRow(
+                    servers = servers,
+                    selectedServerId = selectedServerId,
+                    onServerChanged = { onDashboardSettingChanged(KioskDashboardSetting.Server(it)) },
+                )
             }
 
             // The field holds its own text: each keystroke starts a write that suspends, so a
@@ -49,7 +52,7 @@ internal fun DashboardSection(
                 value = typed,
                 onValueChange = {
                     typed = it
-                    onDashboardPathChanged(it)
+                    onDashboardSettingChanged(KioskDashboardSetting.Path(it))
                 },
                 label = { Text(stringResource(commonR.string.kiosk_dashboard_path)) },
                 placeholder = { Text(stringResource(commonR.string.kiosk_dashboard_path_placeholder)) },

@@ -18,6 +18,7 @@ import io.homeassistant.companion.android.R
 import io.homeassistant.companion.android.authenticator.Authenticator
 import io.homeassistant.companion.android.common.R as commonR
 import io.homeassistant.companion.android.common.compose.theme.HATheme
+import io.homeassistant.companion.android.kiosk.camera.KioskCameraStreamService
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
@@ -56,6 +57,19 @@ class KioskSettingsFragment : Fragment() {
                     .distinctUntilChanged()
                     .filter { it == KioskSettingsLock.LOCKED }
                     .collect { authenticate() }
+            }
+        }
+
+        // Starting the stream from here, rather than from the service itself, keeps the camera
+        // tied to a deliberate act: the user turning the switch on, on a screen they had to reach.
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.viewState
+                    .map { it.cameraStreamEnabled }
+                    .distinctUntilChanged()
+                    .collect { enabled ->
+                        context?.let { KioskCameraStreamService.setEnabled(it, enabled) }
+                    }
             }
         }
     }

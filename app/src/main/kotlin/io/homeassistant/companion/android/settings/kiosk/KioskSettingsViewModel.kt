@@ -8,6 +8,7 @@ import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
 import io.homeassistant.companion.android.common.data.kiosk.KioskCornerPosition
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettingsRepository
+import io.homeassistant.companion.android.common.data.kiosk.KioskStreamCredentials
 import io.homeassistant.companion.android.common.data.servers.ServerManager
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -91,7 +92,36 @@ internal data class KioskSettingsViewState(
     val hideStatusBar: Boolean = false,
     val hideNavigationBar: Boolean = false,
     val brightness: KioskBrightnessOption = KioskBrightnessOption.SystemAdjusted,
+    val cameraStreamEnabled: Boolean = false,
+    val cameraStreamPort: String = KioskSettings.DEFAULT_CAMERA_STREAM_PORT.toString(),
+    val cameraStreamPassword: String? = null,
 )
+
+/**
+ * One of the camera stream choices on the kiosk settings screen.
+ *
+ * One event rather than a function each, for the same reason as [KioskDisplaySetting]: they are
+ * the same kind of choice made in the same section.
+ */
+/** Ports a user may pick; below 1024 needs privileges the app does not have. */
+private const val MIN_PORT = 1024
+private const val MAX_PORT = 65535
+
+/**
+ * One of the dashboard choices on the kiosk settings screen.
+ *
+ * One event rather than a function each, for the same reason as the display and stream choices.
+ */
+internal sealed interface KioskDashboardSetting {
+    data class Server(val serverId: Int?) : KioskDashboardSetting
+    data class Path(val path: String) : KioskDashboardSetting
+}
+
+internal sealed interface KioskCameraStreamSetting {
+    data class Enabled(val enabled: Boolean) : KioskCameraStreamSetting
+    data class Port(val port: String) : KioskCameraStreamSetting
+    data object RegeneratePassword : KioskCameraStreamSetting
+}
 
 @HiltViewModel
 internal class KioskSettingsViewModel @Inject constructor(
@@ -141,11 +171,38 @@ internal class KioskSettingsViewModel @Inject constructor(
     /** Chooses whether that button is invisible; it stays tappable either way. */
     fun onSettingsEntryHiddenChanged(hidden: Boolean) = update { it.copy(settingsEntryHidden = hidden) }
 
-    /** Pins the kiosk to a server, or to whichever is active when [serverId] is null. */
-    fun onServerChanged(serverId: Int?) = update { it.copy(serverId = serverId) }
+    /** Applies one of the dashboard choices. */
+    fun onDashboardSettingChanged(setting: KioskDashboardSetting) = update { settings ->
+        when (setting) {
+            is KioskDashboardSetting.Server -> settings.copy(serverId = setting.serverId)
+            // Blank is stored as absent, so a cleared field reads back as the server's default.
+            is KioskDashboardSetting.Path -> settings.copy(dashboardPath = setting.path.takeIf { it.isNotBlank() })
+        }
+    }
 
-    /** Sets the dashboard this kiosk returns to; blank means the server's default. */
-    fun onDashboardPathChanged(path: String) = update { it.copy(dashboardPath = path.takeIf { p -> p.isNotBlank() }) }
+    /**
+     * Applies one of the camera stream choices.
+     *
+     * Turning the stream on generates a password when there is none. The server has no
+     * unauthenticated mode, so a stream without credentials is not a state this can reach.
+     */
+    fun onCameraStreamSettingChanged(setting: KioskCameraStreamSetting) = update { settings ->
+        when (setting) {
+            is KioskCameraStreamSetting.Enabled -> settings.copy(
+                cameraStreamEnabled = setting.enabled,
+                cameraStreamPassword = settings.cameraStreamPassword
+                    ?: KioskStreamCredentials.generate().password.takeIf { setting.enabled },
+            )
+
+            is KioskCameraStreamSetting.Port -> settings.copy(
+                cameraStreamPort = setting.port.toIntOrNull()?.takeIf { it in MIN_PORT..MAX_PORT }
+                    ?: settings.cameraStreamPort,
+            )
+
+            KioskCameraStreamSetting.RegeneratePassword ->
+                settings.copy(cameraStreamPassword = KioskStreamCredentials.generate().password)
+        }
+    }
 
     /** Applies one of the display choices. */
     fun onDisplaySettingChanged(setting: KioskDisplaySetting) = update { settings ->
@@ -199,4 +256,7 @@ private fun KioskSettings.toViewState(unlocked: Boolean, servers: List<KioskServ
         brightness = brightness
             ?.let { KioskBrightnessOption.Fixed(it.toPercent()) }
             ?: KioskBrightnessOption.SystemAdjusted,
+        cameraStreamEnabled = cameraStreamEnabled,
+        cameraStreamPort = cameraStreamPort.toString(),
+        cameraStreamPassword = cameraStreamPassword,
     )
