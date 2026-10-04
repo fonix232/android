@@ -60,6 +60,41 @@ class KioskSettingsViewModelTest {
     }
 
     @Test
+    fun `Given a clean install then remote commands and their confirmations are on`() = runTest {
+        createViewModel()
+
+        viewModel.viewState.test {
+            val state = awaitItem()
+
+            assertTrue(state.acceptRemoteCommands)
+            assertTrue(state.showRemoteCommandConfirmations)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `Given the user refuses remote commands then it is stored`() = runTest {
+        createViewModel()
+
+        viewModel.onAcceptRemoteCommandsChanged(false)
+        advanceUntilIdle()
+
+        assertFalse(repository.getSettings().acceptRemoteCommands)
+    }
+
+    @Test
+    fun `Given the user silences confirmations then commands are still accepted`() = runTest {
+        createViewModel()
+
+        viewModel.onShowRemoteCommandConfirmationsChanged(false)
+        advanceUntilIdle()
+
+        val stored = repository.getSettings()
+        assertFalse(stored.showRemoteCommandConfirmations)
+        assertTrue(stored.acceptRemoteCommands)
+    }
+
+    @Test
     fun `Given the user hides both system bars then both are stored`() = runTest {
         createViewModel()
         viewModel.onHideStatusBarChanged(true)

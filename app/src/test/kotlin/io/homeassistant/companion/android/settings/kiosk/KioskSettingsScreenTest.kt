@@ -39,6 +39,8 @@ class KioskSettingsScreenTest {
     private val statusBarChanges = mutableListOf<Boolean>()
     private val navigationBarChanges = mutableListOf<Boolean>()
     private val brightnessChanges = mutableListOf<KioskBrightnessOption>()
+    private val acceptRemoteCommandsChanges = mutableListOf<Boolean>()
+    private val showConfirmationsChanges = mutableListOf<Boolean>()
 
     private fun setContent(viewState: KioskSettingsViewState = KioskSettingsViewState()) {
         composeTestRule.setContent {
@@ -49,6 +51,9 @@ class KioskSettingsScreenTest {
                     onHideStatusBarChanged = statusBarChanges::add,
                     onHideNavigationBarChanged = navigationBarChanges::add,
                     onBrightnessChanged = brightnessChanges::add,
+                    onAcceptRemoteCommandsChanged = acceptRemoteCommandsChanges::add,
+                    onShowRemoteCommandConfirmationsChanged = showConfirmationsChanges::add,
+                    onScreensaverClick = {},
                 )
             }
         }
@@ -92,6 +97,25 @@ class KioskSettingsScreenTest {
         composeTestRule.onNodeWithText(string(commonR.string.kiosk_enabled)).performScrollTo().performClick()
 
         assertEquals(listOf(false), enabledChanges)
+    }
+
+    @Test
+    fun `Given remote commands are refused then the confirmation row is not offered`() {
+        // There is nothing to confirm while commands are refused, and a row that configures
+        // confirmations for commands that never arrive is worse than no row.
+        setContent(KioskSettingsViewState(acceptRemoteCommands = false))
+
+        composeTestRule.onNodeWithText(string(commonR.string.kiosk_show_remote_command_confirmations))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun `Given remote commands are accepted then the confirmation row is offered`() {
+        setContent(KioskSettingsViewState(acceptRemoteCommands = true))
+
+        composeTestRule.onNodeWithText(string(commonR.string.kiosk_show_remote_command_confirmations))
+            .performScrollTo()
+            .assertExists()
     }
 
     @Test

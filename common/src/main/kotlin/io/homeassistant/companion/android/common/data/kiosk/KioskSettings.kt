@@ -84,6 +84,23 @@ data class KioskSettings(
     /** Whether kiosk mode is active. All other values are inert while this is false. */
     val enabled: Boolean = false,
 
+    /**
+     * Whether kiosk commands arriving from the server are obeyed.
+     *
+     * On by default: a kiosk is usually somewhere nobody stands, so being able to drive it from an
+     * automation is the point. Turning it off makes the device configurable only in its own
+     * settings.
+     */
+    val acceptRemoteCommands: Boolean = true,
+
+    /**
+     * Whether obeying a kiosk command from the server tells the user it happened.
+     *
+     * Off still runs the command, silently. Ignored while [acceptRemoteCommands] is false, because
+     * then nothing arrives to confirm.
+     */
+    val showRemoteCommandConfirmations: Boolean = true,
+
     val hideStatusBar: Boolean = false,
 
     val hideNavigationBar: Boolean = false,
