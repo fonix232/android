@@ -69,9 +69,9 @@ internal fun KioskSettingsScreen(
         onShowRemoteCommandConfirmationsChanged = viewModel::onShowRemoteCommandConfirmationsChanged,
         onSettingsEntryPositionChanged = viewModel::onSettingsEntryPositionChanged,
         onSettingsEntryHiddenChanged = viewModel::onSettingsEntryHiddenChanged,
-        onServerChanged = viewModel::onServerChanged,
-        onDashboardPathChanged = viewModel::onDashboardPathChanged,
+        onDashboardSettingChanged = viewModel::onDashboardSettingChanged,
         onDisplaySettingChanged = viewModel::onDisplaySettingChanged,
+        onCameraStreamSettingChanged = viewModel::onCameraStreamSettingChanged,
         onScreensaverClick = onScreensaverClick,
         modifier = modifier,
     )
@@ -87,9 +87,9 @@ internal fun KioskSettingsContent(
     onShowRemoteCommandConfirmationsChanged: (Boolean) -> Unit,
     onSettingsEntryPositionChanged: (KioskCornerPosition) -> Unit,
     onSettingsEntryHiddenChanged: (Boolean) -> Unit,
-    onServerChanged: (Int?) -> Unit,
-    onDashboardPathChanged: (String) -> Unit,
+    onDashboardSettingChanged: (KioskDashboardSetting) -> Unit,
     onDisplaySettingChanged: (KioskDisplaySetting) -> Unit,
+    onCameraStreamSettingChanged: (KioskCameraStreamSetting) -> Unit,
     onScreensaverClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -111,8 +111,7 @@ internal fun KioskSettingsContent(
             servers = viewState.servers,
             selectedServerId = viewState.serverId,
             dashboardPath = viewState.dashboardPath,
-            onServerChanged = onServerChanged,
-            onDashboardPathChanged = onDashboardPathChanged,
+            onDashboardSettingChanged = onDashboardSettingChanged,
         )
 
         SettingsEntrySection(
@@ -136,6 +135,13 @@ internal fun KioskSettingsContent(
             hideNavigationBar = viewState.hideNavigationBar,
             brightness = viewState.brightness,
             onDisplaySettingChanged = onDisplaySettingChanged,
+        )
+
+        CameraStreamSection(
+            enabled = viewState.cameraStreamEnabled,
+            port = viewState.cameraStreamPort,
+            password = viewState.cameraStreamPassword,
+            onSettingChanged = onCameraStreamSettingChanged,
         )
 
         ScreensaverCard(onClick = onScreensaverClick)
@@ -277,9 +283,9 @@ private fun KioskSettingsContentPreview() {
             onShowRemoteCommandConfirmationsChanged = {},
             onSettingsEntryPositionChanged = {},
             onSettingsEntryHiddenChanged = {},
-            onServerChanged = {},
-            onDashboardPathChanged = {},
+            onDashboardSettingChanged = {},
             onDisplaySettingChanged = {},
+            onCameraStreamSettingChanged = {},
             onScreensaverClick = {},
         )
     }

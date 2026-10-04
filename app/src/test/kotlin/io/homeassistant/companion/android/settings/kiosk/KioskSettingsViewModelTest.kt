@@ -15,6 +15,8 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -274,5 +276,61 @@ class KioskSettingsViewModelTest {
             assertEquals(KioskSettingsLock.LOCKED, awaitItem().lock)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `Given the camera stream is turned on then a password is generated with it`() = runTest {
+        createViewModel()
+
+        viewModel.onCameraStreamSettingChanged(KioskCameraStreamSetting.Enabled(true))
+        advanceUntilIdle()
+
+        val settings = repository.getSettings()
+        assertTrue(settings.cameraStreamEnabled)
+        // The server has no unauthenticated mode, so "enabled without a password" must be
+        // unreachable rather than merely discouraged.
+        assertNotNull(settings.cameraStreamPassword)
+    }
+
+    @Test
+    fun `Given a password already exists then turning the stream on keeps it`() = runTest {
+        repository.setSettings(KioskSettings(cameraStreamPassword = "already-set"))
+        createViewModel()
+
+        viewModel.onCameraStreamSettingChanged(KioskCameraStreamSetting.Enabled(true))
+        advanceUntilIdle()
+
+        assertEquals("already-set", repository.getSettings().cameraStreamPassword)
+    }
+
+    @Test
+    fun `Given the user asks for a new password then it changes`() = runTest {
+        repository.setSettings(KioskSettings(cameraStreamPassword = "old"))
+        createViewModel()
+
+        viewModel.onCameraStreamSettingChanged(KioskCameraStreamSetting.RegeneratePassword)
+        advanceUntilIdle()
+
+        assertNotEquals("old", repository.getSettings().cameraStreamPassword)
+    }
+
+    @Test
+    fun `Given a port outside the usable range then the stored one is kept`() = runTest {
+        createViewModel()
+
+        viewModel.onCameraStreamSettingChanged(KioskCameraStreamSetting.Port("80"))
+        advanceUntilIdle()
+
+        assertEquals(KioskSettings.DEFAULT_CAMERA_STREAM_PORT, repository.getSettings().cameraStreamPort)
+    }
+
+    @Test
+    fun `Given a usable port then it is stored`() = runTest {
+        createViewModel()
+
+        viewModel.onCameraStreamSettingChanged(KioskCameraStreamSetting.Port("8123"))
+        advanceUntilIdle()
+
+        assertEquals(8123, repository.getSettings().cameraStreamPort)
     }
 }

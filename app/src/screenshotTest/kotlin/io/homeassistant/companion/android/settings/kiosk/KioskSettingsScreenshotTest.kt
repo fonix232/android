@@ -20,9 +20,9 @@ class KioskSettingsScreenshotTest {
                 onShowRemoteCommandConfirmationsChanged = {},
                 onSettingsEntryPositionChanged = {},
                 onSettingsEntryHiddenChanged = {},
-                onServerChanged = {},
-                onDashboardPathChanged = {},
+                onDashboardSettingChanged = {},
                 onDisplaySettingChanged = {},
+                onCameraStreamSettingChanged = {},
                 onScreensaverClick = {},
             )
         }
@@ -46,9 +46,9 @@ class KioskSettingsScreenshotTest {
                 onShowRemoteCommandConfirmationsChanged = {},
                 onSettingsEntryPositionChanged = {},
                 onSettingsEntryHiddenChanged = {},
-                onServerChanged = {},
-                onDashboardPathChanged = {},
+                onDashboardSettingChanged = {},
                 onDisplaySettingChanged = {},
+                onCameraStreamSettingChanged = {},
                 onScreensaverClick = {},
             )
         }

@@ -26,6 +26,9 @@ private const val PREF_KIOSK_AUTO_RELOAD = "kiosk_auto_reload"
 private const val PREF_KIOSK_WAKE_ON_SOUND = "kiosk_wake_on_sound"
 private const val PREF_KIOSK_SOUND_WAKE_THRESHOLD_DBFS = "kiosk_sound_wake_threshold_dbfs"
 private const val PREF_KIOSK_WAKE_ON_CAMERA_MOTION = "kiosk_wake_on_camera_motion"
+private const val PREF_KIOSK_CAMERA_STREAM_ENABLED = "kiosk_camera_stream_enabled"
+private const val PREF_KIOSK_CAMERA_STREAM_PORT = "kiosk_camera_stream_port"
+private const val PREF_KIOSK_CAMERA_STREAM_PASSWORD = "kiosk_camera_stream_password"
 private const val PREF_KIOSK_SCREENSAVER_MODE = "kiosk_screensaver_mode"
 private const val PREF_KIOSK_SCREENSAVER_IDLE_TIMEOUT_SECONDS = "kiosk_screensaver_idle_timeout_seconds"
 
@@ -70,6 +73,9 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
         localStorage.putBoolean(PREF_KIOSK_WAKE_ON_SOUND, settings.wakeOnSound)
         localStorage.putInt(PREF_KIOSK_SOUND_WAKE_THRESHOLD_DBFS, settings.soundWakeThreshold.dbfs.toInt())
         localStorage.putBoolean(PREF_KIOSK_WAKE_ON_CAMERA_MOTION, settings.wakeOnCameraMotion)
+        localStorage.putBoolean(PREF_KIOSK_CAMERA_STREAM_ENABLED, settings.cameraStreamEnabled)
+        localStorage.putInt(PREF_KIOSK_CAMERA_STREAM_PORT, settings.cameraStreamPort)
+        localStorage.putString(PREF_KIOSK_CAMERA_STREAM_PASSWORD, settings.cameraStreamPassword)
         localStorage.putString(PREF_KIOSK_SCREENSAVER_MODE, settings.screensaverMode.storageValue)
         localStorage.putLong(PREF_KIOSK_SCREENSAVER_IDLE_TIMEOUT_SECONDS, idleTimeout.inWholeSeconds)
 
@@ -95,6 +101,8 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
                 PREF_KIOSK_WAKE_ON_SOUND,
                 PREF_KIOSK_SOUND_WAKE_THRESHOLD_DBFS,
                 PREF_KIOSK_WAKE_ON_CAMERA_MOTION,
+                PREF_KIOSK_CAMERA_STREAM_ENABLED,
+                PREF_KIOSK_CAMERA_STREAM_PORT,
                 PREF_KIOSK_SCREENSAVER_MODE,
                 PREF_KIOSK_SCREENSAVER_IDLE_TIMEOUT_SECONDS,
             ) { readSettings() },
@@ -129,6 +137,10 @@ internal class KioskSettingsRepositoryImpl @Inject constructor(
                 ?.let { KioskSoundThreshold.ofDbfs(it.toFloat()) }
                 ?: KioskSoundThreshold.DEFAULT,
             wakeOnCameraMotion = localStorage.getBoolean(PREF_KIOSK_WAKE_ON_CAMERA_MOTION),
+            cameraStreamEnabled = localStorage.getBoolean(PREF_KIOSK_CAMERA_STREAM_ENABLED),
+            cameraStreamPort = localStorage.getInt(PREF_KIOSK_CAMERA_STREAM_PORT)
+                ?: KioskSettings.DEFAULT_CAMERA_STREAM_PORT,
+            cameraStreamPassword = localStorage.getString(PREF_KIOSK_CAMERA_STREAM_PASSWORD),
             screensaverMode = KioskScreensaverMode.fromStorageValue(
                 localStorage.getString(PREF_KIOSK_SCREENSAVER_MODE),
             ),

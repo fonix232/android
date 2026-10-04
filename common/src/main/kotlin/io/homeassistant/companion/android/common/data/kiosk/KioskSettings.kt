@@ -240,6 +240,21 @@ data class KioskSettings(
     val soundWakeThreshold: KioskSoundThreshold = KioskSoundThreshold.DEFAULT,
 
     /**
+     * Whether the camera is served as an MJPEG stream on the local network.
+     *
+     * Off by default. Turning it on generates [cameraStreamPassword] if there is none: the stream
+     * always requires credentials, so there is no state in which it answers an unauthenticated
+     * request.
+     */
+    val cameraStreamEnabled: Boolean = false,
+
+    /** Port the camera stream listens on while [cameraStreamEnabled]. */
+    val cameraStreamPort: Int = DEFAULT_CAMERA_STREAM_PORT,
+
+    /** Password the camera stream requires, or null when one has never been generated. */
+    val cameraStreamPassword: String? = null,
+
+    /**
      * Whether movement seen by the front camera counts as somebody being there.
      *
      * Off by default, and nothing opens the camera until the user turns it on: a camera is not
@@ -263,6 +278,9 @@ data class KioskSettings(
     companion object {
         /** Idle timeout used when the user has not chosen one. */
         val DEFAULT_SCREENSAVER_IDLE_TIMEOUT: Duration = 5.minutes
+
+        /** Port the camera stream uses unless the user picks another. */
+        const val DEFAULT_CAMERA_STREAM_PORT: Int = 8080
 
         /** Shortest idle timeout that still leaves the dashboard usable. */
         val MIN_SCREENSAVER_IDLE_TIMEOUT: Duration = 1.minutes

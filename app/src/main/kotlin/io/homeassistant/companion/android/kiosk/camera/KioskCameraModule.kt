@@ -28,4 +28,9 @@ internal object KioskCameraModule {
     @Singleton
     fun provideKioskCameraMotionDetector(capture: KioskCameraCapture): KioskCameraMotionDetector =
         KioskCameraMotionDetector(capture)
+
+    @Provides
+    @Singleton
+    fun provideKioskCameraStreamServer(capture: KioskCameraCapture): KioskCameraStreamServer =
+        KioskCameraStreamServer(capture)
 }
