@@ -54,6 +54,7 @@ internal data class KioskSettingsViewState(
     val requireAuthentication: Boolean = false,
     val acceptRemoteCommands: Boolean = true,
     val showRemoteCommandConfirmations: Boolean = true,
+    val keepScreenOn: Boolean = false,
     val hideStatusBar: Boolean = false,
     val hideNavigationBar: Boolean = false,
     val brightness: KioskBrightnessOption = KioskBrightnessOption.SystemAdjusted,
@@ -94,6 +95,9 @@ internal class KioskSettingsViewModel @Inject constructor(
         it.copy(showRemoteCommandConfirmations = show)
     }
 
+    /** Chooses whether the display is kept awake while kiosk mode is on. */
+    fun onKeepScreenOnChanged(keep: Boolean) = update { it.copy(keepScreenOn = keep) }
+
     /** Chooses whether the status bar is hidden while kiosk mode is on. */
     fun onHideStatusBarChanged(hide: Boolean) = update { it.copy(hideStatusBar = hide) }
 
@@ -133,6 +137,7 @@ private fun KioskSettings.toViewState(unlocked: Boolean): KioskSettingsViewState
     requireAuthentication = requireAuthentication,
     acceptRemoteCommands = acceptRemoteCommands,
     showRemoteCommandConfirmations = showRemoteCommandConfirmations,
+    keepScreenOn = keepScreenOn,
     hideStatusBar = hideStatusBar,
     hideNavigationBar = hideNavigationBar,
     brightness = brightness

@@ -74,6 +74,7 @@ internal fun KioskSettingsScreen(
         onRequireAuthenticationChanged = onRequireAuthenticationChanged,
         onAcceptRemoteCommandsChanged = viewModel::onAcceptRemoteCommandsChanged,
         onShowRemoteCommandConfirmationsChanged = viewModel::onShowRemoteCommandConfirmationsChanged,
+        onKeepScreenOnChanged = viewModel::onKeepScreenOnChanged,
         onHideStatusBarChanged = viewModel::onHideStatusBarChanged,
         onHideNavigationBarChanged = viewModel::onHideNavigationBarChanged,
         onBrightnessChanged = viewModel::onBrightnessChanged,
@@ -90,6 +91,7 @@ internal fun KioskSettingsContent(
     onRequireAuthenticationChanged: (Boolean) -> Unit,
     onAcceptRemoteCommandsChanged: (Boolean) -> Unit,
     onShowRemoteCommandConfirmationsChanged: (Boolean) -> Unit,
+    onKeepScreenOnChanged: (Boolean) -> Unit,
     onHideStatusBarChanged: (Boolean) -> Unit,
     onHideNavigationBarChanged: (Boolean) -> Unit,
     onBrightnessChanged: (KioskBrightnessOption) -> Unit,
@@ -129,9 +131,11 @@ internal fun KioskSettingsContent(
         )
 
         DisplaySection(
+            keepScreenOn = viewState.keepScreenOn,
             hideStatusBar = viewState.hideStatusBar,
             hideNavigationBar = viewState.hideNavigationBar,
             brightness = viewState.brightness,
+            onKeepScreenOnChanged = onKeepScreenOnChanged,
             onHideStatusBarChanged = onHideStatusBarChanged,
             onHideNavigationBarChanged = onHideNavigationBarChanged,
             onBrightnessChanged = onBrightnessChanged,
@@ -207,9 +211,11 @@ private fun RemoteCommandsSection(
 
 @Composable
 private fun DisplaySection(
+    keepScreenOn: Boolean,
     hideStatusBar: Boolean,
     hideNavigationBar: Boolean,
     brightness: KioskBrightnessOption,
+    onKeepScreenOnChanged: (Boolean) -> Unit,
     onHideStatusBarChanged: (Boolean) -> Unit,
     onHideNavigationBarChanged: (Boolean) -> Unit,
     onBrightnessChanged: (KioskBrightnessOption) -> Unit,
@@ -219,6 +225,12 @@ private fun DisplaySection(
 
         HASettingsCard {
             Column(verticalArrangement = Arrangement.spacedBy(HADimens.SPACE4)) {
+                SwitchRow(
+                    title = stringResource(commonR.string.kiosk_keep_screen_on),
+                    subtitle = null,
+                    checked = keepScreenOn,
+                    onCheckedChange = onKeepScreenOnChanged,
+                )
                 SwitchRow(
                     title = stringResource(commonR.string.kiosk_hide_status_bar),
                     subtitle = null,
@@ -364,6 +376,7 @@ private fun KioskSettingsContentPreview() {
             onRequireAuthenticationChanged = {},
             onAcceptRemoteCommandsChanged = {},
             onShowRemoteCommandConfirmationsChanged = {},
+            onKeepScreenOnChanged = {},
             onHideStatusBarChanged = {},
             onHideNavigationBarChanged = {},
             onBrightnessChanged = {},

@@ -110,6 +110,14 @@ data class KioskSettings(
      */
     val showRemoteCommandConfirmations: Boolean = true,
 
+    /**
+     * Whether the display is kept awake while kiosk mode is active.
+     *
+     * Independent of, and additive to, the app-wide "keep screen on" preference: a wall display
+     * wants to stay lit whether or not the user turned that on for their phone.
+     */
+    val keepScreenOn: Boolean = false,
+
     val hideStatusBar: Boolean = false,
 
     val hideNavigationBar: Boolean = false,

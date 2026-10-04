@@ -80,6 +80,7 @@ class KioskSettingsRepositoryImplTest {
         val stored = KioskSettings(
             enabled = true,
             requireAuthentication = true,
+            keepScreenOn = true,
             hideStatusBar = true,
             hideNavigationBar = true,
             brightness = KioskBrightness.fromPercent(40),

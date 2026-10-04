@@ -52,6 +52,7 @@ class KioskSettingsScreenTest {
                     onHideNavigationBarChanged = navigationBarChanges::add,
                     onBrightnessChanged = brightnessChanges::add,
                     onRequireAuthenticationChanged = {},
+                    onKeepScreenOnChanged = {},
                     onAcceptRemoteCommandsChanged = acceptRemoteCommandsChanges::add,
                     onShowRemoteCommandConfirmationsChanged = showConfirmationsChanges::add,
                     onScreensaverClick = {},

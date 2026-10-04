@@ -14,6 +14,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /** Attribute names on the kiosk mode sensor, so an automation can see how the kiosk is configured. */
+private const val ATTRIBUTE_KEEP_SCREEN_ON = "keep_screen_on"
 private const val ATTRIBUTE_HIDE_STATUS_BAR = "hide_status_bar"
 private const val ATTRIBUTE_HIDE_NAVIGATION_BAR = "hide_navigation_bar"
 private const val ATTRIBUTE_BRIGHTNESS = "brightness"
@@ -100,6 +101,7 @@ class KioskSensorManager @Inject constructor(
 }
 
 private fun KioskSettings.toAttributes(): Map<String, Any> = mapOf(
+    ATTRIBUTE_KEEP_SCREEN_ON to keepScreenOn,
     ATTRIBUTE_HIDE_STATUS_BAR to hideStatusBar,
     ATTRIBUTE_HIDE_NAVIGATION_BAR to hideNavigationBar,
     // A percentage keeps the attribute in the same units the kiosk_set_brightness command takes.
