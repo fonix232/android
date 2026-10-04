@@ -85,6 +85,15 @@ data class KioskSettings(
     val enabled: Boolean = false,
 
     /**
+     * Whether the kiosk settings ask for the device's lock credential before they can be read.
+     *
+     * A kiosk usually hangs on a wall where anyone can reach it, so this is what stops a passer-by
+     * turning kiosk mode off. It guards the settings, not the dashboard: whoever can see the
+     * dashboard could see it anyway.
+     */
+    val requireAuthentication: Boolean = false,
+
+    /**
      * Whether kiosk commands arriving from the server are obeyed.
      *
      * On by default: a kiosk is usually somewhere nobody stands, so being able to drive it from an
