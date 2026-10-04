@@ -43,6 +43,9 @@ abstract class AppSensorModule {
     abstract fun bindDynamicColorSensorManager(impl: DynamicColorSensorManager): SensorManager
 
     @Binds @IntoSet
+    abstract fun bindKioskSensorManager(impl: KioskSensorManager): SensorManager
+
+    @Binds @IntoSet
     abstract fun bindGeocodeSensorManager(impl: GeocodeSensorManager): SensorManager
 
     @Binds @IntoSet
