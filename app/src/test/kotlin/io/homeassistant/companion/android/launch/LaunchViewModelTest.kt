@@ -4,10 +4,12 @@ import android.graphics.Rect
 import android.util.Rational
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
+import app.cash.turbine.test
 import io.homeassistant.companion.android.applock.AppLockStateManager
 import io.homeassistant.companion.android.automotive.navigation.AutomotiveRoute
 import io.homeassistant.companion.android.common.data.authentication.SessionState
 import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.common.data.network.NetworkState
 import io.homeassistant.companion.android.common.data.network.NetworkStatusMonitor
@@ -21,16 +23,22 @@ import io.homeassistant.companion.android.frontend.navigation.FrontendRoute
 import io.homeassistant.companion.android.frontend.navigation.FrontendTarget
 import io.homeassistant.companion.android.kiosk.FakeKioskSettingsRepository
 import io.homeassistant.companion.android.kiosk.ObserveKioskStateUseCase
+import io.homeassistant.companion.android.kiosk.screensaver.KioskScreensaverManager
 import io.homeassistant.companion.android.onboarding.OnboardingRoute
 import io.homeassistant.companion.android.onboarding.WearOnboardingRoute
+import io.homeassistant.companion.android.testing.unit.FakeClock
 import io.homeassistant.companion.android.testing.unit.MainDispatcherJUnit5Extension
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -57,6 +65,7 @@ class LaunchViewModelTest {
     private val workManager: WorkManager = mockk()
     private val appLockStateManager: AppLockStateManager = mockk(relaxed = true)
     private val kioskSettingsRepository = FakeKioskSettingsRepository()
+    private val clock = FakeClock()
 
     private lateinit var viewModel: LaunchViewModel
 
@@ -73,6 +82,7 @@ class LaunchViewModelTest {
             networkStatusMonitor,
             prefsRepository,
             appLockStateManager,
+            KioskScreensaverManager(ObserveKioskStateUseCase(kioskSettingsRepository), clock),
             ObserveKioskStateUseCase(kioskSettingsRepository),
             hasLocationTrackingSupport,
             isAutomotive,
@@ -748,6 +758,52 @@ class LaunchViewModelTest {
     }
 
     @Test
+    fun `Given a configured screensaver when the device stays idle then it covers the dashboard`() = runTest {
+        enableScreensaver()
+        createViewModel()
+
+        viewModel.screensaver.test {
+            assertNull(awaitItem())
+
+            idle(SCREENSAVER_IDLE_TIMEOUT)
+
+            assertEquals(KioskScreensaverMode.CLOCK, awaitItem()?.mode)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `Given the screensaver is showing when the user interacts then the dashboard comes back`() = runTest {
+        enableScreensaver()
+        createViewModel()
+
+        viewModel.screensaver.test {
+            assertNull(awaitItem())
+            idle(SCREENSAVER_IDLE_TIMEOUT)
+            assertEquals(KioskScreensaverMode.CLOCK, awaitItem()?.mode)
+
+            viewModel.onUserInteraction()
+
+            assertNull(awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `Given no kiosk screensaver when the device stays idle then the dashboard stays visible`() = runTest {
+        createViewModel()
+
+        viewModel.screensaver.test {
+            assertNull(awaitItem())
+
+            idle(SCREENSAVER_IDLE_TIMEOUT * 4)
+
+            expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `Given kiosk mode is disabled when observed then no brightness is forced`() = runTest {
         kioskSettingsRepository.setSettings(
             KioskSettings(enabled = false, brightness = KioskBrightness.fromPercent(10)),
@@ -841,5 +897,25 @@ class LaunchViewModelTest {
         advanceUntilIdle()
 
         assertNull(viewModel.pipReadiness.value)
+    }
+
+    private suspend fun enableScreensaver() {
+        kioskSettingsRepository.setSettings(
+            KioskSettings(
+                enabled = true,
+                screensaverMode = KioskScreensaverMode.CLOCK,
+                screensaverIdleTimeout = SCREENSAVER_IDLE_TIMEOUT,
+            ),
+        )
+    }
+
+    /** Advances the test scheduler and the [FakeClock] together, so `delay` and `now()` agree. */
+    private fun TestScope.idle(duration: Duration) {
+        clock.currentInstant += duration
+        advanceTimeBy(duration)
+    }
+
+    private companion object {
+        val SCREENSAVER_IDLE_TIMEOUT = 5.minutes
     }
 }
