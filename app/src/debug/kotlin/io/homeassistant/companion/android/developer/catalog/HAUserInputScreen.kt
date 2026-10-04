@@ -9,6 +9,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -33,6 +34,7 @@ import io.homeassistant.companion.android.common.compose.composable.HADropdownMe
 import io.homeassistant.companion.android.common.compose.composable.HAInputChip
 import io.homeassistant.companion.android.common.compose.composable.HARadioGroup
 import io.homeassistant.companion.android.common.compose.composable.HASearchField
+import io.homeassistant.companion.android.common.compose.composable.HASlider
 import io.homeassistant.companion.android.common.compose.composable.HASwitch
 import io.homeassistant.companion.android.common.compose.composable.HATextField
 import io.homeassistant.companion.android.common.compose.composable.RadioOption
@@ -52,6 +54,7 @@ fun LazyListScope.catalogUserInputSection() {
     dropdownMenu()
     entityPicker()
     switches()
+    sliders()
     checkboxes()
     inputChips()
     radioGroupSection()
@@ -264,6 +267,18 @@ private fun LazyListScope.switches() {
                     isChecked = !it
                 },
             )
+        }
+    }
+}
+
+private fun LazyListScope.sliders() {
+    catalogSection(title = "Sliders") {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            var continuous by remember { mutableFloatStateOf(0.4f) }
+            var stepped by remember { mutableFloatStateOf(0.5f) }
+            HASlider(value = continuous, onValueChange = { continuous = it })
+            HASlider(value = stepped, onValueChange = { stepped = it }, steps = 4)
+            HASlider(value = 0.7f, onValueChange = {}, enabled = false)
         }
     }
 }
