@@ -29,6 +29,9 @@ EXCEPTED_LIBRARIES = [
     "org.chromium.net:*",
     # https://github.com/Dimezis/BlurView/issues/259
     "com.github.Dimezis:BlurView",
+    # Apache-2.0, plus the BSD-3-Clause of the libyuv it bundles for YUV conversion,
+    # which Chromium publishes only as a URL (same situation as org.chromium.net above)
+    "androidx.camera:camera-core",
 ]
 
 
