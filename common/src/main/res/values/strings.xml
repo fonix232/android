@@ -1549,6 +1549,22 @@
     <string name="kiosk_brightness">Screen brightness</string>
     <string name="kiosk_brightness_system">Adjusted by the system</string>
     <string name="kiosk_brightness_percent">%1$d%%</string>
+    <string name="kiosk_screensaver_title">Screensaver</string>
+    <string name="kiosk_screensaver_summary">Cover the dashboard when nobody is using it</string>
+    <string name="kiosk_screensaver_mode">Show</string>
+    <string name="kiosk_screensaver_mode_off">Nothing</string>
+    <string name="kiosk_screensaver_mode_clock">A clock</string>
+    <string name="kiosk_screensaver_mode_blank">A blank screen</string>
+    <string name="kiosk_screensaver_idle_timeout">After</string>
+    <string name="kiosk_screensaver_footer">The screensaver covers the dashboard once the device has been idle for this long. Any touch brings the dashboard back.</string>
     <string name="kiosk_screensaver_clock_description">Screensaver showing %1$s on %2$s. Touch to return to the dashboard.</string>
     <string name="kiosk_screensaver_blank_description">Screensaver. Touch to return to the dashboard.</string>
+    <plurals name="kiosk_screensaver_minutes">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <plurals name="kiosk_screensaver_hours">
+        <item quantity="one">%d hour</item>
+        <item quantity="other">%d hours</item>
+    </plurals>
 </resources>
