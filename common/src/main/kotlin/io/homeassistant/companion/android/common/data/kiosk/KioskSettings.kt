@@ -130,6 +130,21 @@ value class KioskSoundThreshold private constructor(val dbfs: Float) {
     }
 }
 
+/** A corner of the screen the kiosk's settings button can sit in. */
+enum class KioskCornerPosition(val storageValue: String) {
+    TOP_START("top_start"),
+    TOP_END("top_end"),
+    BOTTOM_START("bottom_start"),
+    BOTTOM_END("bottom_end"),
+    ;
+
+    companion object {
+        /** Returns the matching entry, or [BOTTOM_END] when [value] is null or unknown. */
+        fun fromStorageValue(value: String?): KioskCornerPosition =
+            entries.firstOrNull { it.storageValue == value } ?: BOTTOM_END
+    }
+}
+
 /**
  * The complete kiosk mode configuration.
  *
@@ -162,6 +177,18 @@ data class KioskSettings(
      * dashboard could see it anyway.
      */
     val requireAuthentication: Boolean = false,
+
+    /** Which corner the button that opens these settings sits in while kiosk mode is on. */
+    val settingsEntryPosition: KioskCornerPosition = KioskCornerPosition.BOTTOM_END,
+
+    /**
+     * Whether that button is invisible.
+     *
+     * It stays where it is and stays tappable; only its appearance goes. That is the point: the
+     * person who set the device up can still reach the settings, while nobody looking at the
+     * dashboard sees a way in.
+     */
+    val settingsEntryHidden: Boolean = false,
 
     /**
      * Whether kiosk commands arriving from the server are obeyed.

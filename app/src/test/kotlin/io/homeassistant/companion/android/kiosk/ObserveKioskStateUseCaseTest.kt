@@ -2,6 +2,7 @@ package io.homeassistant.companion.android.kiosk
 
 import app.cash.turbine.test
 import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
+import io.homeassistant.companion.android.common.data.kiosk.KioskCornerPosition
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import kotlin.time.Duration.Companion.minutes
@@ -114,6 +115,7 @@ class ObserveKioskStateUseCaseTest {
 
             assertEquals(
                 KioskState.Active(
+                    settingsEntry = KioskSettingsEntry(KioskCornerPosition.BOTTOM_END, hidden = false),
                     autoReloadInterval = null,
                     keepsScreenOn = false,
                     hidesStatusBar = false,

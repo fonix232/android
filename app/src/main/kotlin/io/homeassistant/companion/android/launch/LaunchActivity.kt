@@ -56,9 +56,14 @@ import io.homeassistant.companion.android.common.sensors.SensorWorker
 import io.homeassistant.companion.android.common.util.CheckLocalNetworkPermissionUseCase
 import io.homeassistant.companion.android.common.util.SdkVersion
 import io.homeassistant.companion.android.frontend.navigation.FrontendTarget
+import io.homeassistant.companion.android.kiosk.KioskSettingsEntry
+import io.homeassistant.companion.android.kiosk.KioskSettingsEntryButton
 import io.homeassistant.companion.android.kiosk.screensaver.KioskScreensaverOverlay
+import io.homeassistant.companion.android.kiosk.screensaver.KioskScreensaverUiState
 import io.homeassistant.companion.android.launch.applock.HazeLockOverlay
 import io.homeassistant.companion.android.sensors.SensorReceiver
+import io.homeassistant.companion.android.settings.SettingsActivity
+import io.homeassistant.companion.android.settings.navigation.navigateToSettings
 import io.homeassistant.companion.android.util.CheckLocationDisabledUseCase
 import io.homeassistant.companion.android.util.PLAY_SERVICES_FLAVOR_DOC_URL
 import io.homeassistant.companion.android.util.PlayServicesAvailability
@@ -189,19 +194,7 @@ class LaunchActivity : AppCompatActivity() {
         }
 
         super.onCreate(savedInstanceState)
-        val splashScreen = installSplashScreen()
-
-        splashScreen.setKeepOnScreenCondition {
-            viewModel.shouldShowSplashScreen()
-        }
-
-        // Skip the system's default splash exit animation for a seamless transition to
-        // the icon on the loading screen.
-        if (SdkVersion.isAtLeast(Build.VERSION_CODES.S)) {
-            splashScreen.setOnExitAnimationListener { splashScreenViewProvider ->
-                splashScreenViewProvider.remove()
-            }
-        }
+        setUpSplashScreen()
 
         enableEdgeToEdgeCompat()
 
@@ -213,6 +206,7 @@ class LaunchActivity : AppCompatActivity() {
                 val forcedBrightness by viewModel.forcedBrightness.collectAsStateWithLifecycle()
                 val keepsScreenOn by viewModel.keepsScreenOn.collectAsStateWithLifecycle()
                 val screensaver by viewModel.screensaver.collectAsStateWithLifecycle()
+                val settingsEntry by viewModel.settingsEntry.collectAsStateWithLifecycle()
                 val isAppLocked by viewModel.isAppLocked.collectAsStateWithLifecycle()
                 val hazeState = rememberHazeState()
                 val snackbarHostState = remember { SnackbarHostState() }
@@ -252,23 +246,36 @@ class LaunchActivity : AppCompatActivity() {
                     HazeLockOverlay(hazeState)
                 }
 
-                // Above the lock overlay: while the app is locked the screensaver is the less
-                // revealing of the two, and the authentication prompt is a system dialog that sits
-                // over both regardless.
-                screensaver?.let {
-                    KioskScreensaverOverlay(state = it, onDismiss = viewModel::onUserInteraction)
-                }
+                KioskOverlays(
+                    settingsEntry = settingsEntry,
+                    screensaver = screensaver,
+                    onSettingsEntryClick = { navController.navigateToSettings(SettingsActivity.Deeplink.Kiosk) },
+                    onScreensaverDismiss = viewModel::onUserInteraction,
+                )
 
-                when (uiState) {
-                    LaunchUiState.NetworkUnavailable -> NetworkUnavailableDialog(onBackClick = ::finish)
-                    LaunchUiState.WearUnsupported -> WearUnsupportedDialog(onBackClick = ::finish)
-                    LaunchUiState.Loading, is LaunchUiState.Ready -> {
-                        AppLockEffect(
-                            isAppLocked = isAppLocked,
-                            onAuthSucceeded = viewModel::onAuthenticated,
-                        )
-                    }
-                }
+                LaunchStateContent(
+                    uiState = uiState,
+                    isAppLocked = isAppLocked,
+                    onFinish = ::finish,
+                    onAuthSucceeded = viewModel::onAuthenticated,
+                )
+            }
+        }
+    }
+
+    /** Keeps the splash screen up until the start destination is known, then removes it cleanly. */
+    private fun setUpSplashScreen() {
+        val splashScreen = installSplashScreen()
+
+        splashScreen.setKeepOnScreenCondition {
+            viewModel.shouldShowSplashScreen()
+        }
+
+        // Skip the system's default splash exit animation for a seamless transition to
+        // the icon on the loading screen.
+        if (SdkVersion.isAtLeast(Build.VERSION_CODES.S)) {
+            splashScreen.setOnExitAnimationListener { splashScreenViewProvider ->
+                splashScreenViewProvider.remove()
             }
         }
     }
@@ -388,6 +395,23 @@ private fun KioskForegroundEffect(viewModel: LaunchViewModel) {
     }
 }
 
+/** The dialog or the app lock prompt that [uiState] calls for, if any. */
+@Composable
+private fun LaunchStateContent(
+    uiState: LaunchUiState,
+    isAppLocked: Boolean,
+    onFinish: () -> Unit,
+    onAuthSucceeded: () -> Unit,
+) {
+    when (uiState) {
+        LaunchUiState.NetworkUnavailable -> NetworkUnavailableDialog(onBackClick = onFinish)
+        LaunchUiState.WearUnsupported -> WearUnsupportedDialog(onBackClick = onFinish)
+        LaunchUiState.Loading, is LaunchUiState.Ready -> {
+            AppLockEffect(isAppLocked = isAppLocked, onAuthSucceeded = onAuthSucceeded)
+        }
+    }
+}
+
 /**
  * Holds the display awake while kiosk mode asks for it.
  *
@@ -406,6 +430,27 @@ private fun KioskKeepScreenOnEffect(keepScreenOn: Boolean) {
         }
         onDispose { window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     }
+}
+
+/**
+ * What kiosk mode draws over the app: the way back into its settings, and the screensaver.
+ *
+ * The settings button goes under the screensaver, so a covered dashboard does not offer a way into
+ * the settings without being dismissed first. The screensaver goes over the app lock overlay: while
+ * the app is locked the screensaver is the less revealing of the two, and the authentication prompt
+ * is a system dialog that sits over both regardless.
+ */
+@Composable
+private fun KioskOverlays(
+    settingsEntry: KioskSettingsEntry?,
+    screensaver: KioskScreensaverUiState?,
+    onSettingsEntryClick: () -> Unit,
+    onScreensaverDismiss: () -> Unit,
+) {
+    settingsEntry?.let { entry ->
+        KioskSettingsEntryButton(entry = entry, onClick = onSettingsEntryClick)
+    }
+    screensaver?.let { KioskScreensaverOverlay(state = it, onDismiss = onScreensaverDismiss) }
 }
 
 @Composable
