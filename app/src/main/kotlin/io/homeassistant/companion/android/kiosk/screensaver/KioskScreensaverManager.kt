@@ -1,9 +1,9 @@
 package io.homeassistant.companion.android.kiosk.screensaver
 
 import dagger.hilt.android.scopes.ViewModelScoped
-import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverController
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreenController
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreenRequest
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
-import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverRequest
 import io.homeassistant.companion.android.kiosk.KioskScreensaver
 import io.homeassistant.companion.android.kiosk.ObserveKioskStateUseCase
 import io.homeassistant.companion.android.kiosk.audio.KioskAudioWakeDetector
@@ -48,7 +48,7 @@ internal data class KioskScreensaverUiState(val mode: KioskScreensaverMode, val 
 @ViewModelScoped
 internal class KioskScreensaverManager @Inject constructor(
     private val observeKioskState: ObserveKioskStateUseCase,
-    private val screensaverController: KioskScreensaverController,
+    private val screensaverController: KioskScreenController,
     private val audioWakeDetector: KioskAudioWakeDetector,
     private val clock: Clock,
 ) {
@@ -116,13 +116,13 @@ internal class KioskScreensaverManager @Inject constructor(
             when (request) {
                 // Refused rather than remembered when nothing is configured: a retained request
                 // would otherwise cover the dashboard later, when a screensaver is finally set up.
-                KioskScreensaverRequest.Show -> if (observeKioskState().first().screensaver != null) {
+                KioskScreenRequest.Show -> if (observeKioskState().first().screensaver != null) {
                     idleInput.value = idleInput.value.copy(requested = true)
                 }
 
-                KioskScreensaverRequest.Hide -> onUserInteraction()
-                // Reloading the dashboard is the frontend's to honor, not the screensaver's.
-                KioskScreensaverRequest.Reload -> Unit
+                KioskScreenRequest.Hide -> onUserInteraction()
+                // These reach the frontend, not the screensaver.
+                KioskScreenRequest.Reload, KioskScreenRequest.ReturnToDashboard -> Unit
             }
         }
     }

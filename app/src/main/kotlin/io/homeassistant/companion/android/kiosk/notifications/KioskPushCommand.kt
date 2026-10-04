@@ -34,12 +34,16 @@ sealed interface KioskPushCommand {
     /** Reloads the dashboard now. */
     data object Reload : KioskPushCommand
 
+    /** Goes back to the dashboard this kiosk is configured to show. */
+    data object ReturnToDashboard : KioskPushCommand
+
     companion object {
         private const val SET_BRIGHTNESS = "${KIOSK_COMMAND_PREFIX}set_brightness"
         private const val SET_SCREENSAVER_MODE = "${KIOSK_COMMAND_PREFIX}set_screensaver_mode"
         private const val SHOW_SCREENSAVER = "${KIOSK_COMMAND_PREFIX}show_screensaver"
         private const val HIDE_SCREENSAVER = "${KIOSK_COMMAND_PREFIX}hide_screensaver"
         private const val RELOAD = "${KIOSK_COMMAND_PREFIX}reload"
+        private const val DEFAULT_DASHBOARD = "${KIOSK_COMMAND_PREFIX}default"
 
         /** Payload key holding the level for the commands that take one. */
         private const val KEY_LEVEL = "level"
@@ -69,6 +73,7 @@ sealed interface KioskPushCommand {
             SHOW_SCREENSAVER -> ShowScreensaver
             HIDE_SCREENSAVER -> HideScreensaver
             RELOAD -> Reload
+            DEFAULT_DASHBOARD -> ReturnToDashboard
             else -> null
         }
 

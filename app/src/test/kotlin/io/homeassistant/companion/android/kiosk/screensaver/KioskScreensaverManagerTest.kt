@@ -1,9 +1,9 @@
 package io.homeassistant.companion.android.kiosk.screensaver
 
 import app.cash.turbine.test
-import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverController
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreenController
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreenRequest
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
-import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverRequest
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.kiosk.FakeKioskSettingsRepository
 import io.homeassistant.companion.android.kiosk.ObserveKioskStateUseCase
@@ -31,7 +31,7 @@ class KioskScreensaverManagerTest {
 
     private val repository = FakeKioskSettingsRepository()
     private val clock = FakeClock().apply { currentInstant = START }
-    private val controller = KioskScreensaverController()
+    private val controller = KioskScreenController()
     private val manager = KioskScreensaverManager(ObserveKioskStateUseCase(repository), controller, mockk(relaxed = true), clock)
 
     /**
@@ -175,7 +175,7 @@ class KioskScreensaverManagerTest {
         manager.screensaverFlow().test {
             assertNull(awaitItem())
 
-            controller.request(KioskScreensaverRequest.Show)
+            controller.request(KioskScreenRequest.Show)
             runCurrent()
 
             assertEquals(KioskScreensaverMode.CLOCK, awaitItem()?.mode)
@@ -193,7 +193,7 @@ class KioskScreensaverManagerTest {
             advanceBoth(IDLE_TIMEOUT)
             assertEquals(KioskScreensaverMode.CLOCK, awaitItem()?.mode)
 
-            controller.request(KioskScreensaverRequest.Hide)
+            controller.request(KioskScreenRequest.Hide)
             runCurrent()
 
             assertNull(awaitItem())
@@ -209,7 +209,7 @@ class KioskScreensaverManagerTest {
         manager.screensaverFlow().test {
             assertNull(awaitItem())
 
-            controller.request(KioskScreensaverRequest.Show)
+            controller.request(KioskScreenRequest.Show)
             runCurrent()
 
             expectNoEvents()

@@ -2,9 +2,9 @@ package io.homeassistant.companion.android.kiosk.notifications
 
 import app.cash.turbine.turbineScope
 import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
-import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverController
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreenController
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreenRequest
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
-import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverRequest
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.kiosk.FakeKioskSettingsRepository
 import kotlinx.coroutines.test.runTest
@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test
 class KioskPushCommandHandlerTest {
 
     private val repository = FakeKioskSettingsRepository()
-    private val controller = KioskScreensaverController()
+    private val controller = KioskScreenController()
     private val handler = KioskPushCommandHandler(repository, controller)
 
     @Test
@@ -65,7 +65,7 @@ class KioskPushCommandHandlerTest {
             val obeyed = handler.handle(KioskPushCommand.ShowScreensaver)
 
             assertTrue(obeyed)
-            assertEquals(KioskScreensaverRequest.Show, requests.awaitItem())
+            assertEquals(KioskScreenRequest.Show, requests.awaitItem())
             assertEquals(KioskScreensaverMode.DISABLED, repository.getSettings().screensaverMode)
         }
     }
@@ -77,7 +77,7 @@ class KioskPushCommandHandlerTest {
 
             handler.handle(KioskPushCommand.HideScreensaver)
 
-            assertEquals(KioskScreensaverRequest.Hide, requests.awaitItem())
+            assertEquals(KioskScreenRequest.Hide, requests.awaitItem())
         }
     }
 
