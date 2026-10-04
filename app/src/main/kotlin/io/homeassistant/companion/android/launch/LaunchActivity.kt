@@ -67,6 +67,7 @@ import io.homeassistant.companion.android.util.compose.navigateToUri
 import io.homeassistant.companion.android.util.enableEdgeToEdgeCompat
 import io.homeassistant.companion.android.websocket.WebsocketManager
 import javax.inject.Inject
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
 
@@ -379,7 +380,10 @@ private fun KioskForegroundEffect(viewModel: LaunchViewModel) {
 
     LaunchedEffect(lifecycleOwner, viewModel) {
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            viewModel.observeScreensaverRequests()
+            coroutineScope {
+                launch { viewModel.observeScreensaverRequests() }
+                launch { viewModel.observeSoundWake() }
+            }
         }
     }
 }

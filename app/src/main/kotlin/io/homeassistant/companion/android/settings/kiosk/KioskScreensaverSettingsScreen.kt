@@ -1,5 +1,6 @@
 package io.homeassistant.companion.android.settings.kiosk
 
+import android.Manifest
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,9 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 import io.homeassistant.companion.android.common.R as commonR
 import io.homeassistant.companion.android.common.compose.composable.HADropdownItem
 import io.homeassistant.companion.android.common.compose.composable.HADropdownMenu
@@ -23,6 +27,7 @@ import io.homeassistant.companion.android.common.compose.composable.HASettingsCa
 import io.homeassistant.companion.android.common.compose.theme.HADimens
 import io.homeassistant.companion.android.common.compose.theme.HAThemeForPreview
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
+import io.homeassistant.companion.android.common.data.kiosk.KioskSoundLevel
 import io.homeassistant.companion.android.util.plus
 import io.homeassistant.companion.android.util.safeBottomPaddingValues
 import kotlin.time.Duration
@@ -35,11 +40,20 @@ internal fun KioskScreensaverSettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val viewState by viewModel.viewState.collectAsStateWithLifecycle()
+    val soundLevel by viewModel.soundLevel.collectAsStateWithLifecycle()
+    val requestMicrophone = rememberMicrophonePermissionRequest { viewModel.onWakeOnSoundChanged(true) }
 
     KioskScreensaverSettingsContent(
         viewState = viewState,
+        soundLevel = soundLevel,
         onModeChanged = viewModel::onModeChanged,
         onIdleTimeoutChanged = viewModel::onIdleTimeoutChanged,
+        onWakeOnSoundChanged = { wake ->
+            // Asking only when turning it on: the permission is what capture needs, and turning it
+            // off never needs one.
+            if (wake) requestMicrophone() else viewModel.onWakeOnSoundChanged(false)
+        },
+        onSoundWakeThresholdChanged = viewModel::onSoundWakeThresholdChanged,
         modifier = modifier,
     )
 }
@@ -48,8 +62,11 @@ internal fun KioskScreensaverSettingsScreen(
 @VisibleForTesting
 internal fun KioskScreensaverSettingsContent(
     viewState: KioskScreensaverSettingsViewState,
+    soundLevel: KioskSoundLevel?,
     onModeChanged: (KioskScreensaverMode) -> Unit,
     onIdleTimeoutChanged: (Duration) -> Unit,
+    onWakeOnSoundChanged: (Boolean) -> Unit,
+    onSoundWakeThresholdChanged: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -72,6 +89,34 @@ internal fun KioskScreensaverSettingsContent(
         }
 
         FooterText(stringResource(commonR.string.kiosk_screensaver_footer))
+
+        // Only meaningful with a screensaver to wake from, so it travels with the timeout.
+        AnimatedVisibility(visible = viewState.isTimeoutRelevant) {
+            SoundWakeSection(
+                wakeOnSound = viewState.wakeOnSound,
+                threshold = viewState.soundWakeThreshold,
+                level = soundLevel,
+                onWakeOnSoundChanged = onWakeOnSoundChanged,
+                onThresholdChanged = onSoundWakeThresholdChanged,
+            )
+        }
+    }
+}
+
+/**
+ * Returns a function that asks for the microphone permission and runs [onGranted] once it is held.
+ *
+ * Nothing happens when the user refuses: the toggle stays off, which is the honest outcome, and
+ * they can try again.
+ */
+@OptIn(ExperimentalPermissionsApi::class)
+@Composable
+private fun rememberMicrophonePermissionRequest(onGranted: () -> Unit): () -> Unit {
+    val permissionState = rememberPermissionState(Manifest.permission.RECORD_AUDIO) { granted ->
+        if (granted) onGranted()
+    }
+    return {
+        if (permissionState.status.isGranted) onGranted() else permissionState.launchPermissionRequest()
     }
 }
 
@@ -135,6 +180,9 @@ private fun formatTimeout(timeout: Duration): String {
 
 private const val MINUTES_PER_HOUR = 60
 
+/** A level in the middle of the meter, where someone speaking at the device lands. */
+private const val PREVIEW_SOUND_LEVEL_DBFS = -28f
+
 @Preview
 @Composable
 private fun KioskScreensaverSettingsContentPreview() {
@@ -143,9 +191,13 @@ private fun KioskScreensaverSettingsContentPreview() {
             viewState = KioskScreensaverSettingsViewState(
                 mode = KioskScreensaverMode.CLOCK,
                 idleTimeout = 5.minutes,
+                wakeOnSound = true,
             ),
+            soundLevel = KioskSoundLevel.ofDbfs(PREVIEW_SOUND_LEVEL_DBFS),
             onModeChanged = {},
             onIdleTimeoutChanged = {},
+            onWakeOnSoundChanged = {},
+            onSoundWakeThresholdChanged = {},
         )
     }
 }

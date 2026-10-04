@@ -37,6 +37,10 @@ private fun KioskSettings.toKioskState(): KioskState = if (enabled) {
         screensaver = screensaverMode
             .takeIf { it != KioskScreensaverMode.DISABLED }
             ?.let { KioskScreensaver(mode = it, idleTimeout = screensaverIdleTimeout) },
+        // Listening is pointless without a screensaver to wake from, so the threshold goes away
+        // with it rather than leaving the microphone running for nothing.
+        soundWakeThreshold = soundWakeThreshold
+            .takeIf { wakeOnSound && screensaverMode != KioskScreensaverMode.DISABLED },
     )
 } else {
     KioskState.Inactive

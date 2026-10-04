@@ -6,12 +6,19 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettingsRepository
+import io.homeassistant.companion.android.common.data.kiosk.KioskSoundLevel
+import io.homeassistant.companion.android.common.data.kiosk.KioskSoundThreshold
+import io.homeassistant.companion.android.kiosk.audio.KioskAudioWakeDetector
 import javax.inject.Inject
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -30,20 +37,58 @@ internal val SCREENSAVER_TIMEOUT_CHOICES: List<Duration> =
 internal data class KioskScreensaverSettingsViewState(
     val mode: KioskScreensaverMode = KioskScreensaverMode.DISABLED,
     val idleTimeout: Duration = KioskSettings.DEFAULT_SCREENSAVER_IDLE_TIMEOUT,
+    val wakeOnSound: Boolean = false,
+    val soundWakeThreshold: KioskSoundThreshold = KioskSoundThreshold.DEFAULT,
 ) {
     /** The idle timeout only matters once a screensaver is chosen. */
     val isTimeoutRelevant: Boolean
         get() = mode != KioskScreensaverMode.DISABLED
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 internal class KioskScreensaverSettingsViewModel @Inject constructor(
     private val kioskSettingsRepository: KioskSettingsRepository,
+    audioWakeDetector: KioskAudioWakeDetector,
 ) : ViewModel() {
 
     val viewState: StateFlow<KioskScreensaverSettingsViewState> = kioskSettingsRepository.settingsFlow()
-        .map { KioskScreensaverSettingsViewState(mode = it.screensaverMode, idleTimeout = it.screensaverIdleTimeout) }
+        .map {
+            KioskScreensaverSettingsViewState(
+                mode = it.screensaverMode,
+                idleTimeout = it.screensaverIdleTimeout,
+                wakeOnSound = it.wakeOnSound,
+                soundWakeThreshold = it.soundWakeThreshold,
+            )
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), KioskScreensaverSettingsViewState())
+
+    /**
+     * The microphone level while the user is calibrating, or `null` when nothing is listening.
+     *
+     * Collected only while this screen shows it and only once sound waking is on, so opening the
+     * settings does not open the microphone.
+     */
+    val soundLevel: StateFlow<KioskSoundLevel?> = kioskSettingsRepository.settingsFlow()
+        // Both conditions: with the screensaver set to "Nothing" the calibration UI is hidden, and
+        // an open microphone behind a hidden meter is the worst of both.
+        .map { it.wakeOnSound && it.screensaverMode != KioskScreensaverMode.DISABLED }
+        .distinctUntilChanged()
+        .flatMapLatest { enabled -> if (enabled) audioWakeDetector.levels() else flowOf(null) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
+
+    /** Chooses whether a sound loud enough counts as somebody being there. */
+    fun onWakeOnSoundChanged(wake: Boolean) = update { it.copy(wakeOnSound = wake) }
+
+    /**
+     * Chooses how loud a sound has to be before it counts, from a point on the meter.
+     *
+     * The slider works in the meter's own 0..1 travel; the conversion to dBFS lives in
+     * [KioskSoundThreshold] so the stored unit is never in question.
+     */
+    fun onSoundWakeThresholdChanged(meterPosition: Float) = update {
+        it.copy(soundWakeThreshold = KioskSoundThreshold.ofMeterPosition(meterPosition))
+    }
 
     /** Chooses what the screensaver shows, or turns it off. */
     fun onModeChanged(mode: KioskScreensaverMode) = update { it.copy(screensaverMode = mode) }

@@ -120,6 +120,7 @@ class ObserveKioskStateUseCaseTest {
                     hidesNavigationBar = false,
                     forcedBrightness = null,
                     screensaver = null,
+                    soundWakeThreshold = null,
                 ),
                 awaitItem(),
             )

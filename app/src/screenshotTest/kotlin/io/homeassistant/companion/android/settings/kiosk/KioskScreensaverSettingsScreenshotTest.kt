@@ -5,6 +5,8 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import com.android.tools.screenshot.PreviewTest
 import io.homeassistant.companion.android.common.compose.theme.HAThemeForPreview
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
+import io.homeassistant.companion.android.common.data.kiosk.KioskSoundLevel
+import io.homeassistant.companion.android.common.data.kiosk.KioskSoundThreshold
 import kotlin.time.Duration.Companion.minutes
 
 class KioskScreensaverSettingsScreenshotTest {
@@ -16,8 +18,11 @@ class KioskScreensaverSettingsScreenshotTest {
         HAThemeForPreview {
             KioskScreensaverSettingsContent(
                 viewState = KioskScreensaverSettingsViewState(mode = KioskScreensaverMode.DISABLED),
+                soundLevel = null,
                 onModeChanged = {},
                 onIdleTimeoutChanged = {},
+                onWakeOnSoundChanged = {},
+                onSoundWakeThresholdChanged = {},
             )
         }
     }
@@ -32,8 +37,32 @@ class KioskScreensaverSettingsScreenshotTest {
                     mode = KioskScreensaverMode.CLOCK,
                     idleTimeout = 10.minutes,
                 ),
+                soundLevel = null,
                 onModeChanged = {},
                 onIdleTimeoutChanged = {},
+                onWakeOnSoundChanged = {},
+                onSoundWakeThresholdChanged = {},
+            )
+        }
+    }
+
+    @PreviewLightDark
+    @PreviewTest
+    @Composable
+    fun `Screensaver settings calibrating wake on sound`() {
+        HAThemeForPreview {
+            KioskScreensaverSettingsContent(
+                viewState = KioskScreensaverSettingsViewState(
+                    mode = KioskScreensaverMode.CLOCK,
+                    idleTimeout = 10.minutes,
+                    wakeOnSound = true,
+                    soundWakeThreshold = KioskSoundThreshold.ofDbfs(-40f),
+                ),
+                soundLevel = KioskSoundLevel.ofDbfs(-28f),
+                onModeChanged = {},
+                onIdleTimeoutChanged = {},
+                onWakeOnSoundChanged = {},
+                onSoundWakeThresholdChanged = {},
             )
         }
     }

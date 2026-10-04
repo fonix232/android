@@ -3,6 +3,7 @@ package io.homeassistant.companion.android.kiosk
 import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
+import io.homeassistant.companion.android.common.data.kiosk.KioskSoundThreshold
 import kotlin.time.Duration
 
 /**
@@ -31,6 +32,14 @@ internal sealed interface KioskState {
     /** The screensaver to show after an idle period, or `null` when no screensaver should appear. */
     val screensaver: KioskScreensaver?
 
+    /**
+     * How loud a sound must be to count as somebody being there, or `null` when sound is ignored.
+     *
+     * Null whenever kiosk mode is off, no screensaver is configured, or the user has not turned
+     * sound waking on, so a consumer that holds a threshold is always one that should be listening.
+     */
+    val soundWakeThreshold: KioskSoundThreshold?
+
     /** Kiosk mode is off: nothing is hidden, and the display is left to the system and the user. */
     data object Inactive : KioskState {
         override val autoReloadInterval: Duration? = null
@@ -39,6 +48,7 @@ internal sealed interface KioskState {
         override val hidesNavigationBar: Boolean = false
         override val forcedBrightness: KioskBrightness? = null
         override val screensaver: KioskScreensaver? = null
+        override val soundWakeThreshold: KioskSoundThreshold? = null
     }
 
     /** Kiosk mode is on, and every value here applies to the display right now. */
@@ -49,6 +59,7 @@ internal sealed interface KioskState {
         override val hidesNavigationBar: Boolean,
         override val forcedBrightness: KioskBrightness?,
         override val screensaver: KioskScreensaver?,
+        override val soundWakeThreshold: KioskSoundThreshold?,
     ) : KioskState
 }
 
