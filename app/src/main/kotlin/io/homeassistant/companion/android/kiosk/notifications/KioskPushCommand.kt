@@ -25,9 +25,17 @@ sealed interface KioskPushCommand {
     /** Sets what the screensaver shows, including turning it off. */
     data class SetScreensaverMode(val mode: KioskScreensaverMode) : KioskPushCommand
 
+    /** Covers the dashboard with the screensaver now, without waiting for the idle timeout. */
+    data object ShowScreensaver : KioskPushCommand
+
+    /** Uncovers the dashboard now, and restarts the idle countdown. */
+    data object HideScreensaver : KioskPushCommand
+
     companion object {
         private const val SET_BRIGHTNESS = "${KIOSK_COMMAND_PREFIX}set_brightness"
         private const val SET_SCREENSAVER_MODE = "${KIOSK_COMMAND_PREFIX}set_screensaver_mode"
+        private const val SHOW_SCREENSAVER = "${KIOSK_COMMAND_PREFIX}show_screensaver"
+        private const val HIDE_SCREENSAVER = "${KIOSK_COMMAND_PREFIX}hide_screensaver"
 
         /** Payload key holding the level for the commands that take one. */
         private const val KEY_LEVEL = "level"
@@ -54,6 +62,8 @@ sealed interface KioskPushCommand {
         fun from(message: String?, data: Map<String, String>): KioskPushCommand? = when (message?.normalize()) {
             SET_BRIGHTNESS -> data.level()?.let { SetBrightness(KioskBrightness.of(it.toFloat())) }
             SET_SCREENSAVER_MODE -> data.screensaverMode()?.let(::SetScreensaverMode)
+            SHOW_SCREENSAVER -> ShowScreensaver
+            HIDE_SCREENSAVER -> HideScreensaver
             else -> null
         }
 

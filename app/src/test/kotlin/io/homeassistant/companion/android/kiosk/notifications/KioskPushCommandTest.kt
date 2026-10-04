@@ -72,6 +72,12 @@ class KioskPushCommandTest {
     }
 
     @Test
+    fun `Given a show or hide screensaver command then it needs no payload`() {
+        assertEquals(KioskPushCommand.ShowScreensaver, KioskPushCommand.from("kiosk_show_screensaver", emptyMap()))
+        assertEquals(KioskPushCommand.HideScreensaver, KioskPushCommand.from("kiosk_hide_screensaver", emptyMap()))
+    }
+
+    @Test
     fun `Given a kiosk command this app does not serve then no command is produced`() {
         assertNull(KioskPushCommand.from("kiosk_show_camera", emptyMap()))
     }

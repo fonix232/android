@@ -3,6 +3,7 @@ package io.homeassistant.companion.android.sensors
 import android.content.Context
 import dagger.hilt.android.testing.HiltTestApplication
 import io.homeassistant.companion.android.common.data.kiosk.KioskBrightness
+import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverController
 import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettings
 import io.homeassistant.companion.android.common.data.kiosk.KioskSettingsRepository
@@ -14,7 +15,6 @@ import io.mockk.coEvery
 import io.mockk.coJustRun
 import io.mockk.coVerify
 import io.mockk.mockk
-import io.mockk.slot
 import io.mockk.unmockkAll
 import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.flow.Flow
@@ -48,17 +48,21 @@ class KioskSensorManagerTest {
     private lateinit var context: Context
     private lateinit var sensorRepository: SensorRepository
     private lateinit var serverManager: ServerManager
+    private val screensaverController = KioskScreensaverController()
 
-    private val enabledSensor = Sensor(
-        id = KioskSensorManager.kioskMode.id,
+    private fun enabledSensor(id: String, enabled: Boolean = true) = Sensor(
+        id = id,
         serverId = 1,
-        enabled = true,
+        enabled = enabled,
         state = "false",
         lastSentState = "false",
-        lastSentIcon = KioskSensorManager.kioskMode.statelessIcon,
-        icon = KioskSensorManager.kioskMode.statelessIcon,
+        lastSentIcon = "",
+        icon = "",
         stateType = "boolean",
     )
+
+    private val modeSensor = enabledSensor(KioskSensorManager.kioskMode.id)
+    private val screensaverSensor = enabledSensor(KioskSensorManager.kioskScreensaver.id)
 
     @Before
     fun setUp() {
@@ -67,9 +71,11 @@ class KioskSensorManagerTest {
         serverManager = mockk()
 
         coEvery { serverManager.servers() } returns listOf(mockk(relaxed = true))
-        coEvery { sensorRepository.get(any()) } returns listOf(enabledSensor)
-        coEvery { sensorRepository.get(any(), any()) } returns enabledSensor
-        coEvery { sensorRepository.getFull(any()) } returns mapOf(enabledSensor to emptyList())
+        coEvery { sensorRepository.get(KioskSensorManager.kioskMode.id) } returns listOf(modeSensor)
+        coEvery { sensorRepository.get(KioskSensorManager.kioskScreensaver.id) } returns listOf(screensaverSensor)
+        coEvery { sensorRepository.get(KioskSensorManager.kioskMode.id, any()) } returns modeSensor
+        coEvery { sensorRepository.get(KioskSensorManager.kioskScreensaver.id, any()) } returns screensaverSensor
+        coEvery { sensorRepository.getFull(any()) } returns mapOf(modeSensor to emptyList())
         coJustRun { sensorRepository.update(any()) }
         coJustRun { sensorRepository.replaceAllAttributes(any(), any()) }
     }
@@ -79,35 +85,60 @@ class KioskSensorManagerTest {
         unmockkAll()
     }
 
-    private fun managerFor(settings: KioskSettings) = KioskSensorManager(context, sensorRepository, serverManager, StubKioskSettingsRepository(settings))
+    private fun managerFor(settings: KioskSettings) = KioskSensorManager(context, sensorRepository, serverManager, StubKioskSettingsRepository(settings), screensaverController)
 
-    private suspend fun attributesAfterUpdate(settings: KioskSettings): Map<String, String?> {
-        val captured = slot<List<Attribute>>()
-        coJustRun { sensorRepository.replaceAllAttributes(any(), capture(captured)) }
+    /**
+     * Runs an update and returns the state each sensor reported, keyed by sensor id.
+     *
+     * Both sensors update in one pass, so a single captured slot would only ever hold whichever
+     * reported last.
+     */
+    private suspend fun statesAfterUpdate(settings: KioskSettings): Map<String, String?> {
+        val captured = mutableListOf<Sensor>()
+        coJustRun { sensorRepository.update(capture(captured)) }
 
         managerFor(settings).requestSensorUpdate()
 
-        return captured.captured.associate { it.name to it.value }
+        return captured.associate { it.id to it.state }
+    }
+
+    private suspend fun attributesAfterUpdate(settings: KioskSettings): Map<String, String?> {
+        val captured = mutableListOf<List<Attribute>>()
+        coJustRun { sensorRepository.replaceAllAttributes(KioskSensorManager.kioskMode.id, capture(captured)) }
+
+        managerFor(settings).requestSensorUpdate()
+
+        return captured.flatten().associate { it.name to it.value }
     }
 
     @Test
     fun `Given kiosk mode is on when requesting an update then the sensor reports it on`() = runTest {
-        val updated = slot<Sensor>()
-        coJustRun { sensorRepository.update(capture(updated)) }
+        val states = statesAfterUpdate(KioskSettings(enabled = true))
 
-        managerFor(KioskSettings(enabled = true)).requestSensorUpdate()
-
-        assertEquals("true", updated.captured.state)
+        assertEquals("true", states[KioskSensorManager.kioskMode.id])
     }
 
     @Test
     fun `Given kiosk mode is off when requesting an update then the sensor reports it off`() = runTest {
-        val updated = slot<Sensor>()
-        coJustRun { sensorRepository.update(capture(updated)) }
+        val states = statesAfterUpdate(KioskSettings(enabled = false))
 
-        managerFor(KioskSettings(enabled = false)).requestSensorUpdate()
+        assertEquals("false", states[KioskSensorManager.kioskMode.id])
+    }
 
-        assertEquals("false", updated.captured.state)
+    @Test
+    fun `Given the screensaver is not covering the dashboard then its sensor reports off`() = runTest {
+        val states = statesAfterUpdate(KioskSettings(enabled = true))
+
+        assertEquals("false", states[KioskSensorManager.kioskScreensaver.id])
+    }
+
+    @Test
+    fun `Given the screensaver is covering the dashboard then its sensor reports on`() = runTest {
+        screensaverController.setVisible(true)
+
+        val states = statesAfterUpdate(KioskSettings(enabled = true))
+
+        assertEquals("true", states[KioskSensorManager.kioskScreensaver.id])
     }
 
     @Test
@@ -140,8 +171,8 @@ class KioskSensorManagerTest {
     }
 
     @Test
-    fun `Given the sensor is disabled when requesting an update then nothing is reported`() = runTest {
-        coEvery { sensorRepository.get(any()) } returns listOf(enabledSensor.copy(enabled = false))
+    fun `Given both sensors are disabled when requesting an update then nothing is reported`() = runTest {
+        coEvery { sensorRepository.get(any()) } returns listOf(modeSensor.copy(enabled = false))
 
         managerFor(KioskSettings(enabled = true)).requestSensorUpdate()
 
