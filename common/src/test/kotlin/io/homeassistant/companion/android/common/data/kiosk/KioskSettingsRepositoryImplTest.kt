@@ -76,6 +76,18 @@ class KioskSettingsRepositoryImplTest {
     }
 
     @Test
+    fun `Given waking on camera motion when round tripped then it survives`() = runTest {
+        repository.setSettings(KioskSettings(wakeOnCameraMotion = true))
+
+        assertTrue(repository.getSettings().wakeOnCameraMotion)
+    }
+
+    @Test
+    fun `Given empty storage then waking on camera motion is off`() = runTest {
+        assertFalse(repository.getSettings().wakeOnCameraMotion)
+    }
+
+    @Test
     fun `Given a sound threshold when round tripped then it survives as whole decibels`() = runTest {
         repository.setSettings(KioskSettings(soundWakeThreshold = KioskSoundThreshold.ofDbfs(-37f)))
 

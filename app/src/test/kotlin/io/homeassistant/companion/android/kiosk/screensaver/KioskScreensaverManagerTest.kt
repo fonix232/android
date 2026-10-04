@@ -32,7 +32,13 @@ class KioskScreensaverManagerTest {
     private val repository = FakeKioskSettingsRepository()
     private val clock = FakeClock().apply { currentInstant = START }
     private val controller = KioskScreenController()
-    private val manager = KioskScreensaverManager(ObserveKioskStateUseCase(repository), controller, mockk(relaxed = true), clock)
+    private val manager = KioskScreensaverManager(
+        ObserveKioskStateUseCase(repository),
+        controller,
+        mockk(relaxed = true),
+        mockk(relaxed = true),
+        clock,
+    )
 
     /**
      * Advances the test scheduler and the [FakeClock] together, so `delay` and `Clock.now()` agree

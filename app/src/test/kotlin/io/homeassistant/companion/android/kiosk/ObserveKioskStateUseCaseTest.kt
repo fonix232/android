@@ -123,9 +123,59 @@ class ObserveKioskStateUseCaseTest {
                     forcedBrightness = null,
                     screensaver = null,
                     soundWakeThreshold = null,
+                    wakesOnCameraMotion = false,
                 ),
                 awaitItem(),
             )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `Given camera waking on with a screensaver then the state watches for movement`() = runTest {
+        repository.setSettings(
+            KioskSettings(
+                enabled = true,
+                wakeOnCameraMotion = true,
+                screensaverMode = KioskScreensaverMode.CLOCK,
+            ),
+        )
+
+        observeKioskState().test {
+            assertTrue(awaitItem().wakesOnCameraMotion)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `Given camera waking on without a screensaver then nothing watches`() = runTest {
+        // Watching would open the camera to wake something that cannot appear.
+        repository.setSettings(
+            KioskSettings(
+                enabled = true,
+                wakeOnCameraMotion = true,
+                screensaverMode = KioskScreensaverMode.DISABLED,
+            ),
+        )
+
+        observeKioskState().test {
+            assertFalse(awaitItem().wakesOnCameraMotion)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `Given kiosk mode off then nothing watches however the camera setting is left`() = runTest {
+        repository.setSettings(
+            KioskSettings(
+                enabled = false,
+                wakeOnCameraMotion = true,
+                screensaverMode = KioskScreensaverMode.CLOCK,
+            ),
+        )
+
+        observeKioskState().test {
+            assertFalse(awaitItem().wakesOnCameraMotion)
             cancelAndIgnoreRemainingEvents()
         }
     }

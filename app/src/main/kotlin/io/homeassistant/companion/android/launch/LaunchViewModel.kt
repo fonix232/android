@@ -207,23 +207,14 @@ internal class LaunchViewModel @VisibleForTesting constructor(
         }
     }
 
-    /**
-     * Honors show and hide requests from a server while collected.
-     *
-     * Collected from the activity rather than from [viewModelScope], which outlives the foreground:
-     * a request arriving while the app is in the background has no dashboard to act on, and acting
-     * on it later would cover one at an unrelated moment.
-     */
+    /** Honors show and hide requests from a server, while collected. */
     suspend fun observeScreensaverRequests() = screensaverManager.observeRequests()
 
-    /**
-     * Listens for a sound loud enough to count as somebody being there, while collected.
-     *
-     * Collected from the activity so the microphone is open only while this screen is in the
-     * foreground, which is both what the setting's description promises and what keeps this clear
-     * of the background microphone restrictions.
-     */
+    /** Listens for a sound loud enough to count as somebody being there, while collected. */
     suspend fun observeSoundWake() = screensaverManager.observeSoundWake()
+
+    /** Watches for movement in front of the camera, while collected. */
+    suspend fun observeCameraMotionWake() = screensaverManager.observeCameraMotionWake()
 
     /**
      * Whether kiosk mode wants the display kept awake.

@@ -377,9 +377,10 @@ private fun AppLockEffect(isAppLocked: Boolean, onAuthSucceeded: () -> Unit) {
 /**
  * Runs the kiosk's collectors only while this screen is in the foreground.
  *
- * They cannot run in [LaunchViewModel]'s own scope: it survives backgrounding for as long as the
- * activity stays in the back stack, which is not what "while the kiosk is on screen" means for a
- * request to cover the dashboard, nor for anything that opens a sensor.
+ * This is where that guarantee lives. [LaunchViewModel]'s own scope survives backgrounding for as
+ * long as the activity stays in the back stack, which is not what "while the kiosk is on screen"
+ * means for a request to cover the dashboard, and is not what the microphone and camera settings
+ * promise the user.
  */
 @Composable
 private fun KioskForegroundEffect(viewModel: LaunchViewModel) {
@@ -390,6 +391,7 @@ private fun KioskForegroundEffect(viewModel: LaunchViewModel) {
             coroutineScope {
                 launch { viewModel.observeScreensaverRequests() }
                 launch { viewModel.observeSoundWake() }
+                launch { viewModel.observeCameraMotionWake() }
             }
         }
     }

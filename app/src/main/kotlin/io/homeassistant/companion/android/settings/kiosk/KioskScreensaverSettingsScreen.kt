@@ -41,7 +41,12 @@ internal fun KioskScreensaverSettingsScreen(
 ) {
     val viewState by viewModel.viewState.collectAsStateWithLifecycle()
     val soundLevel by viewModel.soundLevel.collectAsStateWithLifecycle()
-    val requestMicrophone = rememberMicrophonePermissionRequest { viewModel.onWakeOnSoundChanged(true) }
+    val requestMicrophone = rememberPermissionRequest(Manifest.permission.RECORD_AUDIO) {
+        viewModel.onWakeOnSoundChanged(true)
+    }
+    val requestCamera = rememberPermissionRequest(Manifest.permission.CAMERA) {
+        viewModel.onWakeOnCameraMotionChanged(true)
+    }
 
     KioskScreensaverSettingsContent(
         viewState = viewState,
@@ -54,6 +59,9 @@ internal fun KioskScreensaverSettingsScreen(
             if (wake) requestMicrophone() else viewModel.onWakeOnSoundChanged(false)
         },
         onSoundWakeThresholdChanged = viewModel::onSoundWakeThresholdChanged,
+        onWakeOnCameraMotionChanged = { wake ->
+            if (wake) requestCamera() else viewModel.onWakeOnCameraMotionChanged(false)
+        },
         modifier = modifier,
     )
 }
@@ -67,6 +75,7 @@ internal fun KioskScreensaverSettingsContent(
     onIdleTimeoutChanged: (Duration) -> Unit,
     onWakeOnSoundChanged: (Boolean) -> Unit,
     onSoundWakeThresholdChanged: (Float) -> Unit,
+    onWakeOnCameraMotionChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -90,29 +99,36 @@ internal fun KioskScreensaverSettingsContent(
 
         FooterText(stringResource(commonR.string.kiosk_screensaver_footer))
 
-        // Only meaningful with a screensaver to wake from, so it travels with the timeout.
+        // Only meaningful with a screensaver to wake from, so they travel with the timeout.
         AnimatedVisibility(visible = viewState.isTimeoutRelevant) {
-            SoundWakeSection(
-                wakeOnSound = viewState.wakeOnSound,
-                threshold = viewState.soundWakeThreshold,
-                level = soundLevel,
-                onWakeOnSoundChanged = onWakeOnSoundChanged,
-                onThresholdChanged = onSoundWakeThresholdChanged,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(HADimens.SPACE4)) {
+                SoundWakeSection(
+                    wakeOnSound = viewState.wakeOnSound,
+                    threshold = viewState.soundWakeThreshold,
+                    level = soundLevel,
+                    onWakeOnSoundChanged = onWakeOnSoundChanged,
+                    onThresholdChanged = onSoundWakeThresholdChanged,
+                )
+
+                CameraMotionWakeSection(
+                    wakeOnCameraMotion = viewState.wakeOnCameraMotion,
+                    onWakeOnCameraMotionChanged = onWakeOnCameraMotionChanged,
+                )
+            }
         }
     }
 }
 
 /**
- * Returns a function that asks for the microphone permission and runs [onGranted] once it is held.
+ * Returns a function that asks for [permission] and runs [onGranted] once it is held.
  *
  * Nothing happens when the user refuses: the toggle stays off, which is the honest outcome, and
  * they can try again.
  */
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-private fun rememberMicrophonePermissionRequest(onGranted: () -> Unit): () -> Unit {
-    val permissionState = rememberPermissionState(Manifest.permission.RECORD_AUDIO) { granted ->
+private fun rememberPermissionRequest(permission: String, onGranted: () -> Unit): () -> Unit {
+    val permissionState = rememberPermissionState(permission) { granted ->
         if (granted) onGranted()
     }
     return {
@@ -198,6 +214,7 @@ private fun KioskScreensaverSettingsContentPreview() {
             onIdleTimeoutChanged = {},
             onWakeOnSoundChanged = {},
             onSoundWakeThresholdChanged = {},
+            onWakeOnCameraMotionChanged = {},
         )
     }
 }

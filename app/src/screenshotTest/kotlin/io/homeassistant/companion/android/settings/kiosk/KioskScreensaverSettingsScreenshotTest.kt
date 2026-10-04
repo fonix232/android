@@ -23,6 +23,7 @@ class KioskScreensaverSettingsScreenshotTest {
                 onIdleTimeoutChanged = {},
                 onWakeOnSoundChanged = {},
                 onSoundWakeThresholdChanged = {},
+                onWakeOnCameraMotionChanged = {},
             )
         }
     }
@@ -42,6 +43,7 @@ class KioskScreensaverSettingsScreenshotTest {
                 onIdleTimeoutChanged = {},
                 onWakeOnSoundChanged = {},
                 onSoundWakeThresholdChanged = {},
+                onWakeOnCameraMotionChanged = {},
             )
         }
     }
@@ -57,12 +59,14 @@ class KioskScreensaverSettingsScreenshotTest {
                     idleTimeout = 10.minutes,
                     wakeOnSound = true,
                     soundWakeThreshold = KioskSoundThreshold.ofDbfs(-40f),
+                    wakeOnCameraMotion = true,
                 ),
                 soundLevel = KioskSoundLevel.ofDbfs(-28f),
                 onModeChanged = {},
                 onIdleTimeoutChanged = {},
                 onWakeOnSoundChanged = {},
                 onSoundWakeThresholdChanged = {},
+                onWakeOnCameraMotionChanged = {},
             )
         }
     }
