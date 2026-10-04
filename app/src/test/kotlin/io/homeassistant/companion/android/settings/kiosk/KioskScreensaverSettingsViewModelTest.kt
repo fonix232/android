@@ -133,6 +133,16 @@ class KioskScreensaverSettingsViewModelTest {
     }
 
     @Test
+    fun `Given the user turns on waking on movement then it is stored`() = runTest {
+        createViewModel()
+
+        viewModel.onWakeOnCameraMotionChanged(true)
+        advanceUntilIdle()
+
+        assertTrue(repository.getSettings().wakeOnCameraMotion)
+    }
+
+    @Test
     fun `Given every offered timeout then none is below the enforced minimum`() {
         assertTrue(SCREENSAVER_TIMEOUT_CHOICES.all { it >= KioskSettings.MIN_SCREENSAVER_IDLE_TIMEOUT })
     }

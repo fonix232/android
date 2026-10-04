@@ -7,6 +7,7 @@ import io.homeassistant.companion.android.common.data.kiosk.KioskScreensaverMode
 import io.homeassistant.companion.android.kiosk.KioskScreensaver
 import io.homeassistant.companion.android.kiosk.ObserveKioskStateUseCase
 import io.homeassistant.companion.android.kiosk.audio.KioskAudioWakeDetector
+import io.homeassistant.companion.android.kiosk.camera.KioskCameraMotionDetector
 import javax.inject.Inject
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -50,6 +51,7 @@ internal class KioskScreensaverManager @Inject constructor(
     private val observeKioskState: ObserveKioskStateUseCase,
     private val screensaverController: KioskScreenController,
     private val audioWakeDetector: KioskAudioWakeDetector,
+    private val cameraMotionDetector: KioskCameraMotionDetector,
     private val clock: Clock,
 ) {
 
@@ -100,6 +102,27 @@ internal class KioskScreensaverManager @Inject constructor(
                 if (threshold == null) return@collectLatest
                 audioWakeDetector.soundDetections(threshold).collect {
                     Timber.d("Kiosk heard something, treating it as an interaction")
+                    onUserInteraction()
+                }
+            }
+    }
+
+    /**
+     * Treats movement in front of the camera as somebody being there, for as long as it is
+     * collected.
+     *
+     * The camera is only open while this runs, and this only runs while the screen that can show a
+     * screensaver does. Nothing watches unless the user turned camera waking on and a screensaver
+     * is configured to wake from.
+     */
+    suspend fun observeCameraMotionWake() {
+        observeKioskState()
+            .map { it.wakesOnCameraMotion }
+            .distinctUntilChanged()
+            .collectLatest { watching ->
+                if (!watching) return@collectLatest
+                cameraMotionDetector.motionDetections().collect {
+                    Timber.d("Kiosk saw movement, treating it as an interaction")
                     onUserInteraction()
                 }
             }

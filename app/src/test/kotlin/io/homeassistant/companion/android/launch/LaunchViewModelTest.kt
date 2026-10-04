@@ -87,6 +87,7 @@ class LaunchViewModelTest {
                 ObserveKioskStateUseCase(kioskSettingsRepository),
                 KioskScreenController(),
                 mockk(relaxed = true),
+                mockk(relaxed = true),
                 clock,
             ),
             ObserveKioskStateUseCase(kioskSettingsRepository),

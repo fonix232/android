@@ -42,6 +42,8 @@ private fun KioskSettings.toKioskState(): KioskState = if (enabled) {
         // with it rather than leaving the microphone running for nothing.
         soundWakeThreshold = soundWakeThreshold
             .takeIf { wakeOnSound && screensaverMode != KioskScreensaverMode.DISABLED },
+        // Same reasoning for the camera: watching is pointless without a screensaver to wake from.
+        wakesOnCameraMotion = wakeOnCameraMotion && screensaverMode != KioskScreensaverMode.DISABLED,
     )
 } else {
     KioskState.Inactive
